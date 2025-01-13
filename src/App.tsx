@@ -7,20 +7,26 @@ import Platform from "./components/Platform";
 import Rectangles from "./components/Rectangles";
 
 const App = () => {
-	const [rectangles, setRectangles] = useState<{ id: number; position: [number, number, number] }[]>([]);
+	const [rectangles, setRectangles] = useState<
+		{ id: number; position: [number, number, number]; rotation: [number, number, number] }[]
+	>([]);
+	const [controlsEnabled, setControlsEnabled] = useState(true);
 	const [isDragging, setIsDragging] = useState(false);
 
 	const addRectangle = () => {
 		const newId = rectangles.length + 1;
 
-		// Generate a random position within the 4x4 image platform
 		const platformSize = 4; // Size of the image platform
 		const halfSize = platformSize / 2;
 
 		const randomX = Math.random() * platformSize - halfSize; // X range: [-2, 2]
 		const randomZ = Math.random() * platformSize - halfSize; // Z range: [-2, 2]
 
-		setRectangles([...rectangles, { id: newId, position: [randomX, 0.1, randomZ] }]);
+		setRectangles([...rectangles, { id: newId, position: [randomX, 0.1, randomZ], rotation: [0, 0, 0] }]);
+	};
+
+	const updateRectangleRotation = (id: number, rotation: [number, number, number]) => {
+		setRectangles((prev) => prev.map((rect) => (rect.id === id ? { ...rect, rotation } : rect)));
 	};
 
 	return (
@@ -38,10 +44,20 @@ const App = () => {
 					<Platform />
 					<Rectangles
 						rectangles={rectangles}
-						onDragStart={() => setIsDragging(true)}
-						onDragEnd={() => setIsDragging(false)}
+						isDragging={isDragging}
+						onDragStart={() => {
+							setControlsEnabled(false);
+							setIsDragging(true);
+						}}
+						onDragEnd={() => {
+							setControlsEnabled(true);
+							setIsDragging(false);
+						}}
+						onRotate={updateRectangleRotation}
+						onEnableControls={() => setControlsEnabled(true)}
+						onDisableControls={() => setControlsEnabled(false)}
 					/>
-					<OrbitControls enabled={!isDragging} />
+					<OrbitControls enabled={controlsEnabled} />
 				</Canvas>
 			</div>
 			<div className="controls-container">
