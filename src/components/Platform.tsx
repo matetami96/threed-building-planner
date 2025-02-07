@@ -2,7 +2,8 @@ import { useLoader } from "@react-three/fiber";
 import { TextureLoader, DoubleSide } from "three";
 
 const Platform = () => {
-	const texture = useLoader(TextureLoader, "/map.png"); // Load the image texture
+	// Load the image texture
+	const texture = useLoader(TextureLoader, `${import.meta.env.BASE_URL}map.png`);
 
 	return (
 		<>
