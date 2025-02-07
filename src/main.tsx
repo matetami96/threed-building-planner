@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 
-createRoot(document.getElementById("building-planner")!).render(
+createRoot(document.getElementById("react-building-planner")!).render(
 	<StrictMode>
 		<App />
 	</StrictMode>
