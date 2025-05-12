@@ -1,29 +1,74 @@
 .app-container {
 	display: flex;
-	flex-direction: column;
-	justify-content: center;
+	flex-direction: row;
 	align-items: center;
-	width: 100%;
+	width: 100vw;
 	height: 100vh;
 	background-color: white;
 }
 
-.canvas-container {
-	height: 90%;
-	width: 80%;
-	background-color: white;
-}
-
-.controls-container {
-	height: 5%;
-	width: 20%;
+.canvas-wrapper {
 	display: flex;
+	flex-direction: column;
 	justify-content: center;
-	align-items: center;
+	width: 70%;
+	height: 95%;
+	padding-left: 1rem;
+}
+
+.canvas-container {
+	height: 100%;
 	background-color: white;
 }
 
-.add-button {
+.action-container {
+	width: 30%;
+	height: 100%;
+	padding-left: 0.5rem;
+}
+
+.action-container p {
+	margin: 0;
+	/* margin-top: 0.5rem; */
+}
+
+.options-container {
+	width: 100%;
+	margin-top: 1rem;
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+}
+
+.options-container input[type="radio"] {
+	margin: 0;
+}
+
+.options-container label,
+input {
+	cursor: pointer;
+}
+
+.options-container div {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	gap: 0.5rem;
+}
+
+.options-container div:not(:first-child) {
+	margin-left: 1rem;
+}
+
+.btn-container {
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	margin-top: 1rem;
+	width: 100%;
+}
+
+.btn {
 	padding: 10px 20px;
 	font-size: 16px;
 	cursor: pointer;
@@ -34,6 +79,25 @@
 	transition: background-color 0.3s ease;
 }
 
-.add-button:hover {
+.btn:hover {
 	background-color: #45a049;
+}
+
+@media (max-width: 1210px) {
+	.action-container h3 {
+		text-align: center;
+	}
+
+	.options-container {
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.options-container div:not(:first-child) {
+		margin-left: 0;
+	}
+
+	.add-btn-container {
+		justify-content: center;
+	}
 }

@@ -1,162 +1,237 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import "./App.css";
 import { getGoogleMapImageUrl } from "./utils/mapHelpers";
 import Platform from "./components/Platform";
-// import Rectangles from "./components/Rectangles";
 import SearchBar from "./components/SearchBar";
-import Shapes from "./components/Shapes";
+import BoqBuildingFlat from "./models/BoqBuildingFlat";
+import BoqBuildingSaddle from "./models/BoqBuildingSaddle";
+import BoqBuildingHipped from "./models/BoqBuildingHipped";
+import BoqBuildingRenderer from "./components/BoqBuildingRenderer";
 
 const START_LOCATION = { lat: 45.86, lng: 25.79 };
-// const PLATFORM_Y = -0.15;
+
+type BoqBuilding = BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
 
 const App = () => {
 	const [mapImageUrl, setMapImageUrl] = useState<string>(
 		getGoogleMapImageUrl(START_LOCATION.lat, START_LOCATION.lng, 17, 640, 640)
 	);
-
-	const [shapes, setShapes] = useState<
-		{
-			id: number;
-			position: [number, number, number];
-			rotation: [number, number, number];
-			width: number;
-			length: number;
-			height: number;
-			type: "box" | "cylinder" | "cone";
-			sides?: number;
-		}[]
-	>([]);
-
-	/* const [rectangles, setRectangles] = useState<
-		{
-			id: number;
-			position: [number, number, number];
-			rotation: [number, number, number];
-			width: number;
-			length: number;
-			height: number;
-		}[]
-	>([]); */
+	const [currentBuildingType, setCurrentBuildingType] = useState<"flat" | "saddle" | "hipped" | null>(null);
+	const [currentTransformTarget, setCurrentTransformTarget] = useState<"group" | "roof" | "building">("group");
+	const [currentTransformMode, setCurrentTransformMode] = useState<"translate" | "scale" | "rotate">("translate");
+	const [buildingAdded, setBuildingAdded] = useState(false);
+	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
+	const buildingRendererRef = useRef<{ triggerSave: () => void }>(null);
 
 	const handleLocationSelect = (lat: number, lng: number) => {
 		const mapUrl = getGoogleMapImageUrl(lat, lng, 17, 640, 640);
 		setMapImageUrl(mapUrl);
 	};
 
-	const addShape = () => {
-		const newId = shapes.length + 1;
-		const platformSize = 4;
-		const halfSize = platformSize / 2;
-
-		const randomX = Math.random() * platformSize - halfSize;
-		const randomZ = Math.random() * platformSize - halfSize;
-
-		const types: Array<"box" | "cylinder" | "cone"> = ["box", "cylinder", "cone"];
-		const randomType = types[Math.floor(Math.random() * types.length)];
-
-		const randomSides = Math.floor(Math.random() * 8) + 3; // 3 to 10 sides
-		const randomWidth = Math.random() * 1 + 0.5;
-		const randomHeight = Math.random() * 1 + 0.5;
-		const randomLength = Math.random() * 1 + 0.5;
-
-		setShapes([
-			...shapes,
-			{
-				id: newId,
-				position: [randomX, 0.1, randomZ],
-				rotation: [0, 0, 0],
-				width: randomWidth,
-				length: randomLength,
-				height: randomHeight,
-				type: randomType,
-				sides: randomSides,
-			},
-		]);
+	const handleBuildingTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setCurrentBuildingType(event.target.value as "flat" | "saddle" | "hipped");
 	};
 
-	/* const addRectangle = () => {
-		const newId = rectangles.length + 1;
-		const platformSize = 4;
-		const halfSize = platformSize / 2;
+	const handleAddBuilding = () => {
+		let building: BoqBuilding | null = null;
 
-		const randomX = Math.random() * platformSize - halfSize;
-		const randomZ = Math.random() * platformSize - halfSize;
+		switch (currentBuildingType) {
+			case "flat":
+				building = new BoqBuildingFlat();
+				setCurrentTransformTarget("building");
+				setCurrentTransformMode("translate");
+				break;
+			case "saddle":
+				building = new BoqBuildingSaddle();
+				setCurrentTransformTarget("group");
+				setCurrentTransformMode("translate");
+				break;
+			case "hipped":
+				building = new BoqBuildingHipped();
+				setCurrentTransformTarget("group");
+				setCurrentTransformMode("translate");
+				break;
+			default:
+				console.warn("No building type selected");
+				break;
+		}
 
-		setRectangles([
-			...rectangles,
-			{
-				id: newId,
-				position: [randomX, 0.1, randomZ],
-				rotation: [0, 0, 0],
-				width: 0.5,
-				length: 0.5,
-				height: 0.5,
-			},
-		]);
-	}; */
+		console.log("building data when first added:", building);
+		setCurrentBuildingData(building);
+		setBuildingAdded(true);
+	};
 
-	/* const updateRectanglePosition = (id: number, position: [number, number, number]) => {
-		setRectangles((prev) =>
-			prev.map((rect) =>
-				rect.id === id
-					? {
-							...rect,
-							position: [position[0], PLATFORM_Y + rect.height / 2, position[2]],
-					  }
-					: rect
-			)
-		);
-	}; */
+	const handleSaveBuilding = () => {
+		const updated = buildingRendererRef.current?.triggerSave();
 
-	/* const updateRectangleSize = (id: number, width: number, height: number, length: number) => {
-		setRectangles((prev) =>
-			prev.map((rect) =>
-				rect.id === id
-					? {
-							...rect,
-							width,
-							height,
-							length,
-							position: [rect.position[0], PLATFORM_Y + height / 2, rect.position[2]],
-					  }
-					: rect
-			)
-		);
-	}; */
+		if (updated) {
+			// TODO: send to API
+			console.log("✅ Building updated and stored:", updated);
+		}
+	};
 
 	return (
 		<div className="app-container">
-			<SearchBar onLocationSelect={handleLocationSelect} />
-			<div className="canvas-container">
-				<Canvas
-					shadows
-					camera={{
-						position: [0, 1, 1.75],
-						fov: 50,
-					}}
-				>
-					<ambientLight intensity={0.5} />
-					<directionalLight position={[10, 10, 10]} intensity={1} castShadow />
-					{mapImageUrl && <Platform mapImageUrl={mapImageUrl} />}
-					<Shapes shapes={shapes} />
-					{/* <Rectangles
-						rectangles={rectangles}
-						onResize={updateRectangleSize}
-						onPositionChange={updateRectanglePosition}
-					/> */}
-					<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
-				</Canvas>
+			<div className="canvas-wrapper">
+				<SearchBar onLocationSelect={handleLocationSelect} />
+				<div className="canvas-container">
+					<Canvas
+						shadows
+						camera={{
+							position: [0, 1, 1.75],
+							fov: 50,
+						}}
+					>
+						<ambientLight intensity={0.5} />
+						<directionalLight position={[10, 10, 10]} intensity={1} castShadow />
+						{mapImageUrl && <Platform mapImageUrl={mapImageUrl} />}
+						{currentBuildingData && (
+							<BoqBuildingRenderer
+								ref={buildingRendererRef}
+								transformTarget={currentTransformTarget}
+								transformMode={currentTransformMode}
+								buildingProps={currentBuildingData}
+								onSave={handleSaveBuilding}
+							/>
+						)}
+						<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
+					</Canvas>
+				</div>
 			</div>
-			<div className="controls-container">
-				<button className="add-button" onClick={addShape}>
-					Add Shape
-				</button>
-				{/* <button className="add-button" onClick={addRectangle}>
-					Add Square
-				</button> */}
+			<div className="action-container">
+				<h3>Define a building type</h3>
+				<div className="options-container">
+					<div>
+						<label htmlFor="flat">Flat Roof</label>
+						<input
+							type="radio"
+							name="building"
+							id="flat"
+							value={"flat"}
+							checked={currentBuildingType === "flat"}
+							onChange={handleBuildingTypeChange}
+						/>
+					</div>
+					<div>
+						<label htmlFor="saddle">Saddle Roof</label>
+						<input
+							type="radio"
+							name="building"
+							id="saddle"
+							value={"saddle"}
+							checked={currentBuildingType === "saddle"}
+							onChange={handleBuildingTypeChange}
+						/>
+					</div>
+					<div>
+						<label htmlFor="hipped">Hipped Roof</label>
+						<input
+							type="radio"
+							name="building"
+							id="hipped"
+							value={"hipped"}
+							checked={currentBuildingType === "hipped"}
+							onChange={handleBuildingTypeChange}
+						/>
+					</div>
+				</div>
+				{currentBuildingType && (
+					<div className="btn-container">
+						<button className="btn" onClick={handleAddBuilding}>
+							+ Add new building
+						</button>
+					</div>
+				)}
+				{currentBuildingType && currentBuildingType !== "flat" && buildingAdded && (
+					<>
+						<h3>Current transform target: {currentTransformTarget}</h3>
+						<div className="options-container">
+							<div>
+								<label htmlFor="group">Focus group</label>
+								<input
+									type="radio"
+									name="focus-target"
+									id="group"
+									value={"group"}
+									checked={currentTransformTarget === "group"}
+									onChange={() => setCurrentTransformTarget("group")}
+								/>
+							</div>
+							<div>
+								<label htmlFor="roof">Focus roof</label>
+								<input
+									type="radio"
+									name="focus-target"
+									id="roof"
+									value={"roof"}
+									checked={currentTransformTarget === "roof"}
+									onChange={() => setCurrentTransformTarget("roof")}
+								/>
+							</div>
+							<div>
+								<label htmlFor="building">Focus building</label>
+								<input
+									type="radio"
+									name="focus-target"
+									id="building"
+									value={"building"}
+									checked={currentTransformTarget === "building"}
+									onChange={() => setCurrentTransformTarget("building")}
+								/>
+							</div>
+						</div>
+					</>
+				)}
+				{currentBuildingType && buildingAdded && (
+					<>
+						<h3>Current mode: {currentTransformMode}</h3>
+						<div className="options-container">
+							<div>
+								<label htmlFor="translate">Translate</label>
+								<input
+									type="radio"
+									name="translate-mode"
+									id="translate"
+									value={"translate"}
+									checked={currentTransformMode === "translate"}
+									onChange={() => setCurrentTransformMode("translate")}
+								/>
+							</div>
+							<div>
+								<label htmlFor="scale">Scale</label>
+								<input
+									type="radio"
+									name="translate-mode"
+									id="scale"
+									value={"scale"}
+									checked={currentTransformMode === "scale"}
+									onChange={() => setCurrentTransformMode("scale")}
+								/>
+							</div>
+							<div>
+								<label htmlFor="rotate">Rotate</label>
+								<input
+									type="radio"
+									name="translate-mode"
+									id="rotate"
+									value={"rotate"}
+									checked={currentTransformMode === "rotate"}
+									onChange={() => setCurrentTransformMode("rotate")}
+								/>
+							</div>
+						</div>
+					</>
+				)}
+				{currentBuildingData && (
+					<div className="btn-container">
+						<button className="btn" onClick={handleSaveBuilding}>
+							Save current building
+						</button>
+					</div>
+				)}
 			</div>
 		</div>
 	);
