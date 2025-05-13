@@ -2,13 +2,13 @@ import BoqBuilding from "./BoqBuilding";
 
 class BoqBuildingSaddle extends BoqBuilding {
 	constructor(
-		public groupPosition: [number, number, number] = [0, -0.148, 0],
-		public buildingPosition: [number, number, number] = [0, 0.15, 0],
+		public groupPosition: [number, number, number] = [0, 0, 0],
+		public buildingPosition: [number, number, number] = [0, 0, 0],
 		public roofType: string = "saddle",
 		public buildingWidth: number = 0.5,
 		public buildingHeight: number = 0.3,
 		public buildingLength: number = 0.5, // depth
-		public roofPosition: [number, number, number] = [0, 0.3, -0.25],
+		public roofPosition: [number, number, number] = [0, 0, -0.25],
 		public roofRotation: [number, number, number] = [0, 0, 0],
 		public roofWidth: number = 0.5,
 		public roofHeight: number = 0.4,

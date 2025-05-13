@@ -2,8 +2,8 @@ import BoqBuilding from "./BoqBuilding";
 
 class BoqBuildingHipped extends BoqBuilding {
 	constructor(
-		public groupPosition: [number, number, number] = [0, -0.148, 0],
-		public buildingPosition: [number, number, number] = [0, 0.15, 0],
+		public groupPosition: [number, number, number] = [0, 0, 0],
+		public buildingPosition: [number, number, number] = [0, 0, 0],
 		public roofType: string = "hipped",
 		public buildingWidth: number = 0.5,
 		public buildingHeight: number = 0.3,

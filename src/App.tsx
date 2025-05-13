@@ -64,6 +64,18 @@ const App = () => {
 		setBuildingAdded(true);
 	};
 
+	const handleChangeTransformTarget = (mode: "group" | "roof" | "building") => {
+		if (mode === "group") {
+			setCurrentTransformMode("translate");
+		}
+
+		if (mode === "building" || mode === "roof") {
+			setCurrentTransformMode("scale");
+		}
+
+		setCurrentTransformTarget(mode);
+	};
+
 	const handleSaveBuilding = () => {
 		const updated = buildingRendererRef.current?.triggerSave();
 
@@ -157,7 +169,7 @@ const App = () => {
 									id="group"
 									value={"group"}
 									checked={currentTransformTarget === "group"}
-									onChange={() => setCurrentTransformTarget("group")}
+									onChange={() => handleChangeTransformTarget("group")}
 								/>
 							</div>
 							<div>
@@ -168,7 +180,7 @@ const App = () => {
 									id="roof"
 									value={"roof"}
 									checked={currentTransformTarget === "roof"}
-									onChange={() => setCurrentTransformTarget("roof")}
+									onChange={() => handleChangeTransformTarget("roof")}
 								/>
 							</div>
 							<div>
@@ -179,7 +191,7 @@ const App = () => {
 									id="building"
 									value={"building"}
 									checked={currentTransformTarget === "building"}
-									onChange={() => setCurrentTransformTarget("building")}
+									onChange={() => handleChangeTransformTarget("building")}
 								/>
 							</div>
 						</div>
@@ -189,17 +201,19 @@ const App = () => {
 					<>
 						<h3>Current mode: {currentTransformMode}</h3>
 						<div className="options-container">
-							<div>
-								<label htmlFor="translate">Translate</label>
-								<input
-									type="radio"
-									name="translate-mode"
-									id="translate"
-									value={"translate"}
-									checked={currentTransformMode === "translate"}
-									onChange={() => setCurrentTransformMode("translate")}
-								/>
-							</div>
+							{(currentBuildingType === "flat" || currentTransformTarget === "group") && (
+								<div>
+									<label htmlFor="translate">Translate</label>
+									<input
+										type="radio"
+										name="translate-mode"
+										id="translate"
+										value={"translate"}
+										checked={currentTransformMode === "translate"}
+										onChange={() => setCurrentTransformMode("translate")}
+									/>
+								</div>
+							)}
 							<div>
 								<label htmlFor="scale">Scale</label>
 								<input
@@ -211,17 +225,19 @@ const App = () => {
 									onChange={() => setCurrentTransformMode("scale")}
 								/>
 							</div>
-							<div>
-								<label htmlFor="rotate">Rotate</label>
-								<input
-									type="radio"
-									name="translate-mode"
-									id="rotate"
-									value={"rotate"}
-									checked={currentTransformMode === "rotate"}
-									onChange={() => setCurrentTransformMode("rotate")}
-								/>
-							</div>
+							{(currentBuildingType === "flat" || currentTransformTarget === "group") && (
+								<div>
+									<label htmlFor="rotate">Rotate</label>
+									<input
+										type="radio"
+										name="translate-mode"
+										id="rotate"
+										value={"rotate"}
+										checked={currentTransformMode === "rotate"}
+										onChange={() => setCurrentTransformMode("rotate")}
+									/>
+								</div>
+							)}
 						</div>
 					</>
 				)}

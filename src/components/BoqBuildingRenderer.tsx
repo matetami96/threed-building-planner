@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import { TransformControls } from "@react-three/drei";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import BoqBuildingFlat from "../models/BoqBuildingFlat";
 import BoqBuildingHipped from "../models/BoqBuildingHipped";
@@ -62,6 +63,52 @@ const BoqBuildingRenderer = forwardRef(
 		useImperativeHandle(ref, () => ({
 			triggerSave: handleSave,
 		}));
+
+		useFrame(() => {
+			if (buildingRef.current && buildingProps.type === "flat") {
+				const mesh = buildingRef.current;
+				const baseHeight = buildingProps.height;
+
+				// Prevent too small or negative Y scale
+				if (mesh.scale.y < 0.05) {
+					mesh.scale.y = 0.05;
+				}
+
+				// Adjust position to stay on platform
+				mesh.position.y = (baseHeight * mesh.scale.y) / 2;
+			}
+
+			if (
+				(buildingProps.type === "saddle" || buildingProps.type === "hipped") &&
+				buildingRef.current &&
+				roofRef.current &&
+				groupRef.current
+			) {
+				const building = buildingRef.current;
+				const roof = roofRef.current;
+				const baseHeight = (buildingProps as BoqBuildingHipped | BoqBuildingSaddle).buildingHeight;
+
+				// Clamp Y scales
+				if (building.scale.y < 0.05) building.scale.y = 0.05;
+				if (roof.scale.y < 0.1) roof.scale.y = 0.1;
+
+				// Step 1: Keep building above platform
+				building.position.y = (baseHeight * building.scale.y) / 2;
+				// Step 2: Align roof on top
+				const topOfBuilding = building.position.y + (baseHeight * building.scale.y) / 2;
+
+				if (buildingProps.type === "hipped") {
+					const props = buildingProps as BoqBuildingHipped;
+					// Adjust roof Y position so it stays on top of building
+					const scaledBuildingHeight = props.buildingHeight * building.scale.y;
+					const roofOffset = (props.roofHeight * roof.scale.y) / 2;
+					roof.position.y = scaledBuildingHeight + roofOffset;
+				} else {
+					// For extruded saddle roof (origin is at base)
+					roof.position.y = topOfBuilding;
+				}
+			}
+		});
 
 		const handleSave = () => {
 			const type = buildingProps.type;
@@ -149,7 +196,8 @@ const BoqBuildingRenderer = forwardRef(
 								<TransformControls
 									key={"flat-controls"}
 									showX={transformMode !== "rotate"}
-									showY={transformMode !== "rotate"}
+									showY={transformMode !== "translate"}
+									showZ={transformMode !== "rotate"}
 									object={buildingRef.current}
 									mode={transformMode}
 								/>
@@ -186,6 +234,9 @@ const BoqBuildingRenderer = forwardRef(
 					};
 
 					const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+					const showX = transformMode !== "rotate";
+					const showY = transformMode === "rotate";
+					const showZ = transformMode !== "rotate";
 
 					return (
 						<>
@@ -202,19 +253,32 @@ const BoqBuildingRenderer = forwardRef(
 							{controlsReady && transformTarget === "group" && groupRef.current && controlsTarget && (
 								<TransformControls
 									key={"saddle-group-controls"}
-									showX={transformMode !== "rotate"}
-									showY={transformMode !== "rotate"}
+									showX={showX}
+									showY={showY}
+									showZ={showZ}
 									object={groupRef.current}
 									mode={transformMode}
 								/>
 							)}
 
 							{controlsReady && transformTarget === "roof" && roofRef.current && controlsTarget && (
-								<TransformControls key={"saddle-roof-controls"} object={roofRef.current} mode={transformMode} />
+								<TransformControls
+									showX={false}
+									showZ={false}
+									key={"saddle-roof-controls"}
+									object={roofRef.current}
+									mode={transformMode}
+								/>
 							)}
 
 							{controlsReady && transformTarget === "building" && buildingRef.current && controlsTarget && (
-								<TransformControls key={"saddle-building-controls"} object={buildingRef.current} mode={transformMode} />
+								<TransformControls
+									showX={false}
+									showZ={false}
+									key={"saddle-building-controls"}
+									object={buildingRef.current}
+									mode={transformMode}
+								/>
 							)}
 						</>
 					);
@@ -235,6 +299,10 @@ const BoqBuildingRenderer = forwardRef(
 							roofSegments,
 						} = buildingProps as BoqBuildingHipped;
 
+						const showX = transformMode !== "rotate";
+						const showY = transformMode === "rotate";
+						const showZ = transformMode !== "rotate";
+
 						return (
 							<>
 								<group ref={groupRef} position={groupPosition} key="hipped">
@@ -251,19 +319,28 @@ const BoqBuildingRenderer = forwardRef(
 								{controlsReady && transformTarget === "group" && groupRef.current && controlsTarget && (
 									<TransformControls
 										key={"hipped-group-controls"}
-										showX={transformMode !== "rotate"}
-										showY={transformMode !== "rotate"}
+										showX={showX}
+										showY={showY}
+										showZ={showZ}
 										object={groupRef.current}
 										mode={transformMode}
 									/>
 								)}
 
 								{controlsReady && transformTarget === "roof" && roofRef.current && controlsTarget && (
-									<TransformControls key={"hipped-roof-controls"} object={roofRef.current} mode={transformMode} />
+									<TransformControls
+										showX={false}
+										showZ={false}
+										key={"hipped-roof-controls"}
+										object={roofRef.current}
+										mode={transformMode}
+									/>
 								)}
 
 								{controlsReady && transformTarget === "building" && buildingRef.current && controlsTarget && (
 									<TransformControls
+										showX={false}
+										showZ={false}
 										key={"hipped-building-controls"}
 										object={buildingRef.current}
 										mode={transformMode}
