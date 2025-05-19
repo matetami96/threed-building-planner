@@ -1,11 +1,11 @@
 class BoqBuilding {
 	constructor(
-		public type: string,
-		public width: number,
-		public height: number,
-		public length: number, // depth
-		public position: [number, number, number],
-		public rotation: [number, number, number]
+		public roofType: string,
+		public buildingWidth: number,
+		public buildingHeight: number,
+		public buildingLength: number, // depth
+		public buildingPosition: [number, number, number],
+		public buildingRotation: [number, number, number]
 	) {}
 }
 

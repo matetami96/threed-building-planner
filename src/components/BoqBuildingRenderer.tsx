@@ -13,12 +13,14 @@ type BoqBuildingRendererProps = {
 	transformMode: "translate" | "scale" | "rotate";
 	buildingProps: BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
 	onSave: () => void;
+	onTransformUpdate?: (updated: BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped) => void;
 };
 
 const BoqBuildingRenderer = forwardRef(
-	({ transformTarget, transformMode, buildingProps }: BoqBuildingRendererProps, ref) => {
+	({ transformTarget, transformMode, buildingProps, onTransformUpdate }: BoqBuildingRendererProps, ref) => {
 		const [controlsReady, setControlsReady] = useState(false);
 		const [controlsTarget, setControlsTarget] = useState<THREE.Object3D | null>(null);
+		const [isDragging, setIsDragging] = useState(false);
 		const groupRef = useRef<THREE.Group>(null);
 		const roofRef = useRef<THREE.Mesh>(null);
 		const buildingRef = useRef<THREE.Mesh>(null);
@@ -60,14 +62,38 @@ const BoqBuildingRenderer = forwardRef(
 			}
 		}, [transformTarget, buildingProps]);
 
-		useImperativeHandle(ref, () => ({
-			triggerSave: handleSave,
-		}));
+		useEffect(() => {
+			if (buildingProps.roofType !== "flat" || !buildingRef.current) return;
+			const { buildingPosition, buildingRotation } = buildingProps as BoqBuildingFlat;
+
+			const mesh = buildingRef.current;
+			mesh.position.set(...buildingPosition);
+			mesh.rotation.set(...buildingRotation);
+			mesh.scale.set(1, 1, 1);
+		}, [buildingProps]);
+
+		useEffect(() => {
+			if (buildingProps.roofType !== "saddle" || !groupRef.current || !buildingRef.current || !roofRef.current) return;
+
+			const { groupPosition, groupRotation, buildingPosition, buildingRotation, roofPosition, roofRotation } =
+				buildingProps as BoqBuildingSaddle;
+
+			groupRef.current?.position.set(...groupPosition);
+			groupRef.current?.rotation.set(...groupRotation);
+			groupRef.current?.scale.set(1, 1, 1);
+
+			buildingRef.current?.position.set(...buildingPosition);
+			buildingRef.current?.rotation.set(...buildingRotation);
+			buildingRef.current?.scale.set(1, 1, 1);
+
+			roofRef.current?.position.set(...roofPosition);
+			roofRef.current?.rotation.set(...roofRotation);
+			roofRef.current?.scale.set(1, 1, 1);
+		}, [buildingProps]);
 
 		useFrame(() => {
-			if (buildingRef.current && buildingProps.type === "flat") {
+			if (buildingProps.roofType === "flat" && buildingRef.current) {
 				const mesh = buildingRef.current;
-				const baseHeight = buildingProps.height;
 
 				// Prevent too small or negative Y scale
 				if (mesh.scale.y < 0.05) {
@@ -75,55 +101,122 @@ const BoqBuildingRenderer = forwardRef(
 				}
 
 				// Adjust position to stay on platform
-				mesh.position.y = (baseHeight * mesh.scale.y) / 2;
-			}
+				mesh.position.y = (buildingProps.buildingHeight * mesh.scale.y) / 2;
 
+				const newPos: [number, number, number] = [mesh.position.x, mesh.position.y, mesh.position.z];
+				const newRot: [number, number, number] = [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z];
+				const newScale: [number, number, number] = [mesh.scale.x, mesh.scale.y, mesh.scale.z];
+
+				const updated = {
+					...buildingProps,
+					buildingPosition: newPos,
+					buildingRotation: newRot,
+					buildingWidth: buildingProps.buildingWidth * newScale[0],
+					buildingHeight: buildingProps.buildingHeight * newScale[1],
+					buildingLength: buildingProps.buildingLength * newScale[2],
+				};
+
+				// Prevent looping updates
+				const isChanged = JSON.stringify(updated) !== JSON.stringify(buildingProps);
+
+				if (isChanged) {
+					if (transformMode === "scale" && !isDragging) {
+						onTransformUpdate?.(updated);
+					} else if (transformMode !== "scale") {
+						// callback to update App state here
+						onTransformUpdate?.(updated);
+					}
+				}
+			}
+		});
+
+		useFrame(() => {
 			if (
-				(buildingProps.type === "saddle" || buildingProps.type === "hipped") &&
+				(buildingProps.roofType === "saddle" || buildingProps.roofType === "hipped") &&
 				buildingRef.current &&
 				roofRef.current &&
 				groupRef.current
 			) {
 				const building = buildingRef.current;
 				const roof = roofRef.current;
-				const baseHeight = (buildingProps as BoqBuildingHipped | BoqBuildingSaddle).buildingHeight;
+				const group = groupRef.current;
+
+				const isSaddle = buildingProps.roofType === "saddle";
+				const isHipped = buildingProps.roofType === "hipped";
+
+				const baseBuildingHeight = (buildingProps as BoqBuildingHipped | BoqBuildingSaddle).buildingHeight;
 
 				// Clamp Y scales
 				if (building.scale.y < 0.05) building.scale.y = 0.05;
 				if (roof.scale.y < 0.1) roof.scale.y = 0.1;
 
-				// Step 1: Keep building above platform
-				building.position.y = (baseHeight * building.scale.y) / 2;
-				// Step 2: Align roof on top
-				const topOfBuilding = building.position.y + (baseHeight * building.scale.y) / 2;
+				// Keep building above platform
+				building.position.y = (baseBuildingHeight * building.scale.y) / 2;
 
-				if (buildingProps.type === "hipped") {
-					const props = buildingProps as BoqBuildingHipped;
-					// Adjust roof Y position so it stays on top of building
-					const scaledBuildingHeight = props.buildingHeight * building.scale.y;
-					const roofOffset = (props.roofHeight * roof.scale.y) / 2;
+				// Align roof on top
+				if (isHipped) {
+					const baseRoofHeight = (buildingProps as BoqBuildingHipped).roofHeight;
+					const scaledBuildingHeight = baseBuildingHeight * building.scale.y;
+					const roofOffset = (baseRoofHeight * roof.scale.y) / 2;
 					roof.position.y = scaledBuildingHeight + roofOffset;
-				} else {
-					// For extruded saddle roof (origin is at base)
+				} else if (isSaddle) {
+					const topOfBuilding = building.position.y + (baseBuildingHeight * building.scale.y) / 2;
 					roof.position.y = topOfBuilding;
+					roof.position.z = -buildingProps.buildingLength / 2; // keep roof centered
+				}
+
+				// Now update props if saddle
+				if (isSaddle) {
+					const saddleBuildingProps = buildingProps as BoqBuildingSaddle;
+					const baseRoofHeight = saddleBuildingProps.roofHeight;
+
+					const updated: BoqBuildingSaddle = {
+						...saddleBuildingProps,
+						groupPosition: [group.position.x, group.position.y, group.position.z],
+						groupRotation: [group.rotation.x, group.rotation.y, group.rotation.z],
+						buildingPosition: [building.position.x, building.position.y, building.position.z],
+						buildingRotation: [building.rotation.x, building.rotation.y, building.rotation.z],
+						buildingHeight: baseBuildingHeight * building.scale.y,
+						buildingWidth: saddleBuildingProps.buildingWidth * group.scale.x,
+						buildingLength: saddleBuildingProps.buildingLength * group.scale.z,
+						roofPosition: [roof.position.x, roof.position.y, roof.position.z],
+						roofRotation: [roof.rotation.x, roof.rotation.y, roof.rotation.z],
+						roofHeight: baseRoofHeight * roof.scale.y,
+						roofWidth: saddleBuildingProps.roofWidth * group.scale.x,
+						roofLength: saddleBuildingProps.roofLength * group.scale.z,
+					};
+
+					const isChanged = JSON.stringify(updated) !== JSON.stringify(buildingProps);
+
+					if (isChanged) {
+						if (transformMode === "scale" && !isDragging) {
+							onTransformUpdate?.(updated);
+						} else if (transformMode !== "scale") {
+							onTransformUpdate?.(updated);
+						}
+					}
 				}
 			}
 		});
 
+		useImperativeHandle(ref, () => ({
+			triggerSave: handleSave,
+		}));
+
 		const handleSave = () => {
-			const type = buildingProps.type;
+			const type = buildingProps.roofType;
 
 			if (type === "flat" && buildingRef.current) {
-				const { width, height, length } = buildingProps as BoqBuildingFlat;
+				const { buildingWidth, buildingHeight, buildingLength } = buildingProps as BoqBuildingFlat;
 				const { position, rotation, scale } = extractTransform(buildingRef.current);
 
 				return {
-					type: "flat",
-					buildingWidth: width * scale[0],
-					buildingHeight: height * scale[1],
-					buildingLength: length * scale[2],
-					position,
-					rotation,
+					roofType: "flat",
+					buildingWidth: buildingWidth * scale[0],
+					buildingHeight: buildingHeight * scale[1],
+					buildingLength: buildingLength * scale[2],
+					buildingPosition: position,
+					buildingRotation: rotation,
 				};
 			}
 
@@ -136,7 +229,7 @@ const BoqBuildingRenderer = forwardRef(
 				const roof = extractTransform(roofRef.current);
 
 				return {
-					type: "saddle",
+					roofType: "saddle",
 					groupPosition: group.position,
 					groupRotation: group.rotation,
 					buildingPosition: building.position,
@@ -161,7 +254,7 @@ const BoqBuildingRenderer = forwardRef(
 				const roof = extractTransform(roofRef.current);
 
 				return {
-					type: "hipped",
+					roofType: "hipped",
 					groupPosition: group.position,
 					groupRotation: group.rotation,
 					buildingPosition: building.position,
@@ -181,14 +274,14 @@ const BoqBuildingRenderer = forwardRef(
 		};
 
 		const renderBuildingModel = () => {
-			switch (buildingProps.type) {
+			switch (buildingProps.roofType) {
 				case "flat": {
-					const { position, width, height, length } = buildingProps as BoqBuildingFlat;
+					const { buildingWidth, buildingHeight, buildingLength, buildingPosition } = buildingProps as BoqBuildingFlat;
 
 					return (
 						<>
-							<mesh ref={buildingRef} position={position} key="flat">
-								<boxGeometry args={[width, height, length]} />
+							<mesh ref={buildingRef} position={buildingPosition} key="flat">
+								<boxGeometry args={[buildingWidth, buildingHeight, buildingLength]} />
 								<meshStandardMaterial color="lightgray" />
 							</mesh>
 
@@ -200,6 +293,8 @@ const BoqBuildingRenderer = forwardRef(
 									showZ={transformMode !== "rotate"}
 									object={buildingRef.current}
 									mode={transformMode}
+									onMouseDown={() => setIsDragging(true)}
+									onMouseUp={() => setIsDragging(false)}
 								/>
 							)}
 						</>
@@ -258,6 +353,8 @@ const BoqBuildingRenderer = forwardRef(
 									showZ={showZ}
 									object={groupRef.current}
 									mode={transformMode}
+									onMouseDown={() => setIsDragging(true)}
+									onMouseUp={() => setIsDragging(false)}
 								/>
 							)}
 
@@ -268,6 +365,8 @@ const BoqBuildingRenderer = forwardRef(
 									key={"saddle-roof-controls"}
 									object={roofRef.current}
 									mode={transformMode}
+									onMouseDown={() => setIsDragging(true)}
+									onMouseUp={() => setIsDragging(false)}
 								/>
 							)}
 
@@ -278,6 +377,8 @@ const BoqBuildingRenderer = forwardRef(
 									key={"saddle-building-controls"}
 									object={buildingRef.current}
 									mode={transformMode}
+									onMouseDown={() => setIsDragging(true)}
+									onMouseUp={() => setIsDragging(false)}
 								/>
 							)}
 						</>

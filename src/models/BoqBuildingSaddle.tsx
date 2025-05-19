@@ -3,7 +3,9 @@ import BoqBuilding from "./BoqBuilding";
 class BoqBuildingSaddle extends BoqBuilding {
 	constructor(
 		public groupPosition: [number, number, number] = [0, 0, 0],
+		public groupRotation: [number, number, number] = [0, 0, 0],
 		public buildingPosition: [number, number, number] = [0, 0, 0],
+		public buildingRotation: [number, number, number] = [0, 0, 0],
 		public roofType: string = "saddle",
 		public buildingWidth: number = 0.5,
 		public buildingHeight: number = 0.3,
@@ -14,7 +16,7 @@ class BoqBuildingSaddle extends BoqBuilding {
 		public roofHeight: number = 0.4,
 		public roofLength: number = 0.5
 	) {
-		super(roofType, buildingWidth, buildingHeight, buildingLength, buildingPosition, [0, 0, 0]);
+		super(roofType, buildingWidth, buildingHeight, buildingLength, buildingPosition, buildingRotation);
 	}
 }
 

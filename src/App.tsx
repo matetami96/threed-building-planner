@@ -10,6 +10,7 @@ import BoqBuildingFlat from "./models/BoqBuildingFlat";
 import BoqBuildingSaddle from "./models/BoqBuildingSaddle";
 import BoqBuildingHipped from "./models/BoqBuildingHipped";
 import BoqBuildingRenderer from "./components/BoqBuildingRenderer";
+import BuildingInputs from "./components/BuildingInputs";
 
 const START_LOCATION = { lat: 45.86, lng: 25.79 };
 
@@ -85,6 +86,10 @@ const App = () => {
 		}
 	};
 
+	const handleBuildingInputChange = (key: string, value: number | number[]) => {
+		setCurrentBuildingData((prev) => prev && { ...prev, [key]: value });
+	};
+
 	return (
 		<div className="app-container">
 			<div className="canvas-wrapper">
@@ -107,6 +112,7 @@ const App = () => {
 								transformMode={currentTransformMode}
 								buildingProps={currentBuildingData}
 								onSave={handleSaveBuilding}
+								onTransformUpdate={(updated) => setCurrentBuildingData(updated)}
 							/>
 						)}
 						<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
@@ -247,6 +253,13 @@ const App = () => {
 							Save current building
 						</button>
 					</div>
+				)}
+				{buildingAdded && currentBuildingData && (
+					<BuildingInputs
+						currentBuildingType={currentBuildingType!}
+						buildingProps={currentBuildingData}
+						onChangeBuildingState={handleBuildingInputChange}
+					/>
 				)}
 			</div>
 		</div>
