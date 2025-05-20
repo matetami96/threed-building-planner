@@ -19,5 +19,18 @@ export default defineConfig(({ mode }) => {
 				},
 			}),
 		],
+		build: {
+			rollupOptions: {
+				output: {
+					entryFileNames: "react-building-planner.js",
+					assetFileNames: (assetInfo) => {
+						if (assetInfo.names && assetInfo.names.some((name) => name.endsWith(".css"))) {
+							return "react-building-planner.css";
+						}
+						return "assets/[name].[hash][extname]";
+					},
+				},
+			},
+		},
 	};
 });

@@ -133,7 +133,7 @@ const App = () => {
 							onChange={handleBuildingTypeChange}
 						/>
 					</div>
-					<div>
+					{/* <div>
 						<label htmlFor="saddle">Saddle Roof</label>
 						<input
 							type="radio"
@@ -143,8 +143,8 @@ const App = () => {
 							checked={currentBuildingType === "saddle"}
 							onChange={handleBuildingTypeChange}
 						/>
-					</div>
-					<div>
+					</div> */}
+					{/* <div>
 						<label htmlFor="hipped">Hipped Roof</label>
 						<input
 							type="radio"
@@ -154,7 +154,7 @@ const App = () => {
 							checked={currentBuildingType === "hipped"}
 							onChange={handleBuildingTypeChange}
 						/>
-					</div>
+					</div> */}
 				</div>
 				{currentBuildingType && (
 					<div className="btn-container">
@@ -247,19 +247,19 @@ const App = () => {
 						</div>
 					</>
 				)}
-				{currentBuildingData && (
-					<div className="btn-container">
-						<button className="btn" onClick={handleSaveBuilding}>
-							Save current building
-						</button>
-					</div>
-				)}
 				{buildingAdded && currentBuildingData && (
 					<BuildingInputs
 						currentBuildingType={currentBuildingType!}
 						buildingProps={currentBuildingData}
 						onChangeBuildingState={handleBuildingInputChange}
 					/>
+				)}
+				{currentBuildingData && (
+					<div className="btn-container">
+						<button className="btn" onClick={handleSaveBuilding}>
+							Save building
+						</button>
+					</div>
 				)}
 			</div>
 		</div>
