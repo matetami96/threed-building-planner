@@ -16,6 +16,9 @@ const START_LOCATION = { lat: 45.86, lng: 25.79 };
 
 type BoqBuilding = BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
 
+// const availableBuildingTypes = ["flat", "saddle", "hipped"];
+declare const availableBuildingTypes: string[];
+
 const App = () => {
 	const [mapImageUrl, setMapImageUrl] = useState<string>(
 		getGoogleMapImageUrl(START_LOCATION.lat, START_LOCATION.lng, 17, 640, 640)
@@ -122,39 +125,45 @@ const App = () => {
 			<div className="action-container">
 				<h3>Define a building type</h3>
 				<div className="options-container">
-					<div>
-						<label htmlFor="flat">Flat Roof</label>
-						<input
-							type="radio"
-							name="building"
-							id="flat"
-							value={"flat"}
-							checked={currentBuildingType === "flat"}
-							onChange={handleBuildingTypeChange}
-						/>
-					</div>
-					{/* <div>
-						<label htmlFor="saddle">Saddle Roof</label>
-						<input
-							type="radio"
-							name="building"
-							id="saddle"
-							value={"saddle"}
-							checked={currentBuildingType === "saddle"}
-							onChange={handleBuildingTypeChange}
-						/>
-					</div> */}
-					{/* <div>
-						<label htmlFor="hipped">Hipped Roof</label>
-						<input
-							type="radio"
-							name="building"
-							id="hipped"
-							value={"hipped"}
-							checked={currentBuildingType === "hipped"}
-							onChange={handleBuildingTypeChange}
-						/>
-					</div> */}
+					{availableBuildingTypes.includes("flat") && (
+						<div>
+							<label htmlFor="flat">Flat Roof</label>
+							<input
+								type="radio"
+								name="building"
+								id="flat"
+								value={"flat"}
+								checked={currentBuildingType === "flat"}
+								onChange={handleBuildingTypeChange}
+							/>
+						</div>
+					)}
+					{availableBuildingTypes.includes("saddle") && (
+						<div>
+							<label htmlFor="saddle">Saddle Roof</label>
+							<input
+								type="radio"
+								name="building"
+								id="saddle"
+								value={"saddle"}
+								checked={currentBuildingType === "saddle"}
+								onChange={handleBuildingTypeChange}
+							/>
+						</div>
+					)}
+					{availableBuildingTypes.includes("hipped") && (
+						<div>
+							<label htmlFor="hipped">Hipped Roof</label>
+							<input
+								type="radio"
+								name="building"
+								id="hipped"
+								value={"hipped"}
+								checked={currentBuildingType === "hipped"}
+								onChange={handleBuildingTypeChange}
+							/>
+						</div>
+					)}
 				</div>
 				{currentBuildingType && (
 					<div className="btn-container">

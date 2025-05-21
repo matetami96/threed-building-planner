@@ -1,0 +1,25 @@
+.search-container {
+	margin-bottom: 1rem;
+	position: relative;
+	height: auto;
+}
+
+.search-container input {
+	width: 200px;
+}
+
+.search-container input:focus {
+	outline: none;
+}
+
+.search-container ul {
+	list-style: none;
+	margin: 0;
+	padding: 3px;
+	background: white;
+	position: absolute;
+	top: 86px;
+	border: 1px solid #ccc;
+	width: 200px;
+	z-index: 1000;
+}

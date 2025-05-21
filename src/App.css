@@ -2,9 +2,9 @@
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	width: 100vw;
 	height: 100vh;
-	background-color: white;
+	background-color: transparent;
+	margin-bottom: 5rem;
 }
 
 .canvas-wrapper {
@@ -12,7 +12,7 @@
 	flex-direction: column;
 	justify-content: center;
 	width: 70%;
-	height: 95%;
+	height: 100%;
 	padding-left: 1rem;
 }
 
@@ -73,31 +73,31 @@ input {
 	font-size: 16px;
 	cursor: pointer;
 	border: none;
-	background-color: #4caf50;
+	background-color: #9bb0be;
 	color: white;
 	border-radius: 5px;
 	transition: background-color 0.3s ease;
 }
 
 .btn:hover {
-	background-color: #45a049;
+	background-color: #7c98aa;
 }
 
 @media (max-width: 1210px) {
 	.action-container h3 {
-		text-align: center;
+		text-align: left;
 	}
 
 	.options-container {
 		flex-direction: column;
-		align-items: center;
+		align-items: flex-start;
+	}
+
+	.options-container div {
+		width: 8rem;
 	}
 
 	.options-container div:not(:first-child) {
 		margin-left: 0;
-	}
-
-	.add-btn-container {
-		justify-content: center;
 	}
 }

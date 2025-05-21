@@ -2,6 +2,8 @@ import BoqBuildingFlat from "../models/BoqBuildingFlat";
 import BoqBuildingHipped from "../models/BoqBuildingHipped";
 import BoqBuildingSaddle from "../models/BoqBuildingSaddle";
 
+import "./BuildingInputs.css";
+
 type BuildingInputsProps = {
 	currentBuildingType: "flat" | "saddle" | "hipped";
 	buildingProps: BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
@@ -17,10 +19,10 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 				buildingProps as BoqBuildingFlat;
 
 			return (
-				<div className="flat-inputs">
+				<div className="building-inputs">
 					<h3>Flat Building Properties</h3>
 					<label>
-						Width:
+						<p>Width:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -35,7 +37,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Height:
+						<p>Height:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -50,7 +52,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Length:
+						<p>Length:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -65,7 +67,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Position X:
+						<p>Position X:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -78,7 +80,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Position Z:
+						<p>Position Z:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -91,7 +93,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Rotation Y:
+						<p>Rotation Y:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -111,7 +113,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 				buildingProps as BoqBuildingSaddle;
 
 			return (
-				<div className="flat-inputs">
+				<div className="building-inputs">
 					<h3>Saddle Building Properties</h3>
 					<label>
 						Group Position X:

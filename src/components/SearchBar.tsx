@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import "./SearchBar.css";
+
 type SearchBarProps = {
 	onLocationSelect: (lat: number, lng: number) => void;
 };
@@ -45,28 +47,11 @@ const SearchBar = ({ onLocationSelect }: SearchBarProps) => {
 	};
 
 	return (
-		<div style={{ marginTop: ".5rem", marginBottom: ".5rem", position: "relative", height: "auto" }}>
-			<input
-				type="text"
-				value={searchQuery}
-				onChange={handleInputChange}
-				placeholder="Search location..."
-				style={{ width: "200px" }}
-			/>
+		<div className="search-container">
+			<h3>Search Location</h3>
+			<input type="text" value={searchQuery} onChange={handleInputChange} placeholder="Search location..." />
 			{predictions.length > 0 && (
-				<ul
-					style={{
-						listStyle: "none",
-						margin: 0,
-						padding: "5px",
-						background: "white",
-						position: "absolute",
-						top: "30px",
-						border: "1px solid #ccc",
-						width: "200px",
-						zIndex: 1000,
-					}}
-				>
+				<ul>
 					{predictions.map((prediction) => (
 						<li
 							key={prediction.place_id}
