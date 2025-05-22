@@ -5,12 +5,18 @@ import BoqBuildingSaddle from "../models/BoqBuildingSaddle";
 import "./BuildingInputs.css";
 
 type BuildingInputsProps = {
+	currentLocation: { lat: number; lng: number };
 	currentBuildingType: "flat" | "saddle" | "hipped";
 	buildingProps: BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
 	onChangeBuildingState: (key: string, value: number | number[]) => void;
 };
 
-const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingState }: BuildingInputsProps) => {
+const BuildingInputs = ({
+	currentLocation,
+	currentBuildingType,
+	buildingProps,
+	onChangeBuildingState,
+}: BuildingInputsProps) => {
 	const { roofType } = buildingProps;
 
 	const renderBuildingInputs = () => {
@@ -21,6 +27,10 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 			return (
 				<div className="building-inputs">
 					<h3>Flat Building Properties</h3>
+					<h4>Coordinates (lat, lng):</h4>
+					<p className="coordinates">
+						{currentLocation.lat}, {currentLocation.lng}
+					</p>
 					<label>
 						<p>Width:</p>
 						<input
@@ -115,8 +125,12 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 			return (
 				<div className="building-inputs">
 					<h3>Saddle Building Properties</h3>
+					<h4>Coordinates (lat, lng):</h4>
+					<p className="coordinates">
+						{currentLocation.lat}, {currentLocation.lng}
+					</p>
 					<label>
-						Group Position X:
+						<p>Group Position X:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -129,7 +143,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Group Position Z:
+						<p>Group Position Z:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -142,7 +156,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Group Rotation Y:
+						<p>Group Rotation Y:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -155,7 +169,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Building Height:
+						<p>Building Height:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -170,7 +184,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Roof Height:
+						<p>Roof Height:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -185,7 +199,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Building Width:
+						<p>Building Width:</p>
 						<input
 							type="number"
 							step="0.1"
@@ -201,7 +215,7 @@ const BuildingInputs = ({ currentBuildingType, buildingProps, onChangeBuildingSt
 					</label>
 					<br />
 					<label>
-						Building Length:
+						<p>Building Length:</p>
 						<input
 							type="number"
 							step="0.1"

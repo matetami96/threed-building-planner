@@ -12,26 +12,34 @@ import BoqBuildingHipped from "./models/BoqBuildingHipped";
 import BoqBuildingRenderer from "./components/BoqBuildingRenderer";
 import BuildingInputs from "./components/BuildingInputs";
 
-const START_LOCATION = { lat: 45.86, lng: 25.79 };
+const START_LOCATION = { lat: 45.8664544, lng: 25.7981645 };
 
 type BoqBuilding = BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
 
 // const availableBuildingTypes = ["flat", "saddle", "hipped"];
 declare const availableBuildingTypes: string[];
+declare const baseUrl: string;
 
 const App = () => {
 	const [mapImageUrl, setMapImageUrl] = useState<string>(
 		getGoogleMapImageUrl(START_LOCATION.lat, START_LOCATION.lng, 17, 640, 640)
 	);
+	const [currentlySelectedLocation, setCurrentlySelectedLocation] = useState<{
+		lat: number;
+		lng: number;
+	}>(START_LOCATION);
 	const [currentBuildingType, setCurrentBuildingType] = useState<"flat" | "saddle" | "hipped" | null>(null);
 	const [currentTransformTarget, setCurrentTransformTarget] = useState<"group" | "roof" | "building">("group");
 	const [currentTransformMode, setCurrentTransformMode] = useState<"translate" | "scale" | "rotate">("translate");
 	const [buildingAdded, setBuildingAdded] = useState(false);
 	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
-	const buildingRendererRef = useRef<{ triggerSave: () => void }>(null);
+	const buildingRendererRef = useRef<{ triggerSave: () => BoqBuilding & { location: { lat: number; lng: number } } }>(
+		null
+	);
 
 	const handleLocationSelect = (lat: number, lng: number) => {
 		const mapUrl = getGoogleMapImageUrl(lat, lng, 17, 640, 640);
+		setCurrentlySelectedLocation({ lat, lng });
 		setMapImageUrl(mapUrl);
 	};
 
@@ -81,9 +89,10 @@ const App = () => {
 	};
 
 	const handleSaveBuilding = () => {
-		const updated = buildingRendererRef.current?.triggerSave();
+		const updated = buildingRendererRef.current!.triggerSave();
 
 		if (updated) {
+			updated.location = currentlySelectedLocation;
 			// TODO: send to API
 			console.log("✅ Building updated and stored:", updated);
 		}
@@ -258,6 +267,7 @@ const App = () => {
 				)}
 				{buildingAdded && currentBuildingData && (
 					<BuildingInputs
+						currentLocation={currentlySelectedLocation}
 						currentBuildingType={currentBuildingType!}
 						buildingProps={currentBuildingData}
 						onChangeBuildingState={handleBuildingInputChange}
