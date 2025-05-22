@@ -47,6 +47,7 @@
 .options-container label,
 input {
 	cursor: pointer;
+	padding-left: 0;
 }
 
 .options-container div {
@@ -79,8 +80,9 @@ input {
 	transition: background-color 0.3s ease;
 }
 
-.btn:hover {
+.btn-container .btn:hover {
 	background-color: #7c98aa;
+	color: white;
 }
 
 @media (max-width: 1210px) {
