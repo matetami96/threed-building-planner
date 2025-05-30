@@ -1,44 +1,39 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import "./App.css";
-import { getGoogleMapImageUrl } from "./utils/mapHelpers";
-import Platform from "./components/Platform";
-import SearchBar from "./components/SearchBar";
+import BoqBuilding from "./models/BoqBuilding";
+import { BuildingWithLocation } from "./types";
 import BoqBuildingFlat from "./models/BoqBuildingFlat";
 import BoqBuildingSaddle from "./models/BoqBuildingSaddle";
 import BoqBuildingHipped from "./models/BoqBuildingHipped";
+
+import { getGoogleMapImageUrl } from "./utils/mapHelpers";
+import Platform from "./components/Platform";
+import SearchBar from "./components/SearchBar";
 import BoqBuildingRenderer from "./components/BoqBuildingRenderer";
 import BuildingInputs from "./components/BuildingInputs";
 
 const START_LOCATION = { lat: 45.8664544, lng: 25.7981645 };
-
-type BoqBuilding = BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
-
+const hiddenBuildingsInput = document.querySelector<HTMLInputElement>("[name='buildings']")!;
 // const availableBuildingTypes = ["flat", "saddle", "hipped"];
 declare const availableBuildingTypes: string[];
-declare const baseUrl: string;
+declare const buildingsData: BuildingWithLocation | object;
 
 const App = () => {
-	const [mapImageUrl, setMapImageUrl] = useState<string>(
-		getGoogleMapImageUrl(START_LOCATION.lat, START_LOCATION.lng, 17, 640, 640)
+	const [mapImageUrl, setMapImageUrl] = useState<string>(getGoogleMapImageUrl(START_LOCATION.lat, START_LOCATION.lng));
+	const [currentlySelectedLocation, setCurrentlySelectedLocation] = useState<{ lat: number; lng: number }>(
+		START_LOCATION
 	);
-	const [currentlySelectedLocation, setCurrentlySelectedLocation] = useState<{
-		lat: number;
-		lng: number;
-	}>(START_LOCATION);
 	const [currentBuildingType, setCurrentBuildingType] = useState<"flat" | "saddle" | "hipped" | null>(null);
 	const [currentTransformTarget, setCurrentTransformTarget] = useState<"group" | "roof" | "building">("group");
 	const [currentTransformMode, setCurrentTransformMode] = useState<"translate" | "scale" | "rotate">("translate");
 	const [buildingAdded, setBuildingAdded] = useState(false);
 	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
-	const buildingRendererRef = useRef<{ triggerSave: () => BoqBuilding & { location: { lat: number; lng: number } } }>(
-		null
-	);
 
 	const handleLocationSelect = (lat: number, lng: number) => {
-		const mapUrl = getGoogleMapImageUrl(lat, lng, 17, 640, 640);
+		const mapUrl = getGoogleMapImageUrl(lat, lng);
 		setCurrentlySelectedLocation({ lat, lng });
 		setMapImageUrl(mapUrl);
 	};
@@ -47,34 +42,39 @@ const App = () => {
 		setCurrentBuildingType(event.target.value as "flat" | "saddle" | "hipped");
 	};
 
-	const handleAddBuilding = () => {
-		let building: BoqBuilding | null = null;
+	const handleAddBuilding = useCallback(
+		(_currentBuildingType: "flat" | "saddle" | "hipped", location: { lat: number; lng: number }) => {
+			let building: BuildingWithLocation | null = null;
 
-		switch (currentBuildingType) {
-			case "flat":
-				building = new BoqBuildingFlat();
-				setCurrentTransformTarget("building");
-				setCurrentTransformMode("translate");
-				break;
-			case "saddle":
-				building = new BoqBuildingSaddle();
-				setCurrentTransformTarget("group");
-				setCurrentTransformMode("translate");
-				break;
-			case "hipped":
-				building = new BoqBuildingHipped();
-				setCurrentTransformTarget("group");
-				setCurrentTransformMode("translate");
-				break;
-			default:
-				console.warn("No building type selected");
-				break;
-		}
+			switch (_currentBuildingType) {
+				case "flat":
+					building = new BoqBuildingFlat();
+					setCurrentTransformTarget("building");
+					setCurrentTransformMode("translate");
+					break;
+				case "saddle":
+					building = new BoqBuildingSaddle();
+					setCurrentTransformTarget("group");
+					setCurrentTransformMode("translate");
+					break;
+				case "hipped":
+					building = new BoqBuildingHipped();
+					setCurrentTransformTarget("group");
+					setCurrentTransformMode("translate");
+					break;
+				default:
+					console.warn("No building type selected");
+					break;
+			}
 
-		console.log("building data when first added:", building);
-		setCurrentBuildingData(building);
-		setBuildingAdded(true);
-	};
+			setCurrentBuildingData(building);
+			setBuildingAdded(true);
+			building!.location = location;
+			hiddenBuildingsInput.value = JSON.stringify(building);
+			console.log("building data when first added:", building);
+		},
+		[]
+	);
 
 	const handleChangeTransformTarget = (mode: "group" | "roof" | "building") => {
 		if (mode === "group") {
@@ -88,19 +88,41 @@ const App = () => {
 		setCurrentTransformTarget(mode);
 	};
 
-	const handleSaveBuilding = () => {
-		const updated = buildingRendererRef.current!.triggerSave();
-
-		if (updated) {
-			updated.location = currentlySelectedLocation;
-			// TODO: send to API
-			console.log("✅ Building updated and stored:", updated);
-		}
-	};
-
 	const handleBuildingInputChange = (key: string, value: number | number[]) => {
 		setCurrentBuildingData((prev) => prev && { ...prev, [key]: value });
+		const updatedBuildingData = { ...currentBuildingData, [key]: value };
+		hiddenBuildingsInput.value = JSON.stringify(updatedBuildingData);
 	};
+
+	useEffect(() => {
+		if (buildingsData && Object.keys(buildingsData).length > 0) {
+			// Do something if buildingsData is a non-empty object
+			const initialBuildingData = JSON.parse(JSON.stringify(buildingsData)) as BuildingWithLocation;
+			setCurrentlySelectedLocation(initialBuildingData.location!);
+			setCurrentBuildingType(initialBuildingData.roofType as "flat" | "saddle" | "hipped");
+			setCurrentTransformTarget(initialBuildingData.roofType === "flat" ? "building" : "group");
+			setCurrentTransformMode("translate");
+			setMapImageUrl(getGoogleMapImageUrl(initialBuildingData.location!.lat, initialBuildingData.location!.lng));
+			setCurrentBuildingData(initialBuildingData);
+			setBuildingAdded(true);
+			hiddenBuildingsInput.value = JSON.stringify(initialBuildingData);
+			console.log("Initial building data loaded:", initialBuildingData);
+		}
+	}, []);
+
+	useEffect(() => {
+		if (
+			(!buildingsData || Object.keys(buildingsData).length === 0) &&
+			availableBuildingTypes.length === 1 &&
+			!buildingAdded
+		) {
+			// Do something when buildingsData is null, undefined, or an empty object
+			// and there's only one building type available
+			const initialBuildingType = availableBuildingTypes[0] as "flat" | "saddle" | "hipped";
+			setCurrentBuildingType(initialBuildingType);
+			handleAddBuilding(initialBuildingType, currentlySelectedLocation);
+		}
+	}, [handleAddBuilding, currentlySelectedLocation, buildingAdded]);
 
 	return (
 		<div className="app-container">
@@ -119,12 +141,14 @@ const App = () => {
 						{mapImageUrl && <Platform mapImageUrl={mapImageUrl} />}
 						{currentBuildingData && (
 							<BoqBuildingRenderer
-								ref={buildingRendererRef}
 								transformTarget={currentTransformTarget}
 								transformMode={currentTransformMode}
 								buildingProps={currentBuildingData}
-								onSave={handleSaveBuilding}
-								onTransformUpdate={(updated) => setCurrentBuildingData(updated)}
+								onTransformUpdate={(updated) => {
+									setCurrentBuildingData(updated);
+									updated.location = currentlySelectedLocation;
+									hiddenBuildingsInput.value = JSON.stringify(updated);
+								}}
 							/>
 						)}
 						<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
@@ -176,7 +200,7 @@ const App = () => {
 				</div>
 				{currentBuildingType && (
 					<div className="btn-container">
-						<button className="btn" onClick={handleAddBuilding}>
+						<button className="btn" onClick={() => handleAddBuilding(currentBuildingType!, currentlySelectedLocation!)}>
 							+ Add new building
 						</button>
 					</div>
@@ -267,18 +291,11 @@ const App = () => {
 				)}
 				{buildingAdded && currentBuildingData && (
 					<BuildingInputs
-						currentLocation={currentlySelectedLocation}
+						currentLocation={currentlySelectedLocation!}
 						currentBuildingType={currentBuildingType!}
 						buildingProps={currentBuildingData}
 						onChangeBuildingState={handleBuildingInputChange}
 					/>
-				)}
-				{currentBuildingData && (
-					<div className="btn-container">
-						<button className="btn" onClick={handleSaveBuilding}>
-							Save building
-						</button>
-					</div>
 				)}
 			</div>
 		</div>

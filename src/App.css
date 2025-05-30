@@ -85,6 +85,10 @@ input {
 	color: white;
 }
 
+.btn-container .btn:focus {
+	color: white;
+}
+
 @media (max-width: 1210px) {
 	.action-container h3 {
 		text-align: left;
