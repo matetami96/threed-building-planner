@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { ThreeEvent, useFrame } from "@react-three/fiber";
 import { TransformControls } from "@react-three/drei";
 import { useEffect, useRef, useState } from "react";
 
@@ -13,14 +13,18 @@ type BoqBuildingRendererProps = {
 	transformTarget: "group" | "roof" | "building";
 	transformMode: "translate" | "scale" | "rotate";
 	buildingProps: BoqBuilding;
+	disableTransform: boolean;
 	onTransformUpdate?: (updated: BuildingWithLocation) => void;
+	onBuildingClick?: (e: ThreeEvent<PointerEvent>) => void;
 };
 
 const BoqBuildingRenderer = ({
 	transformTarget,
 	transformMode,
 	buildingProps,
+	disableTransform,
 	onTransformUpdate,
+	onBuildingClick,
 }: BoqBuildingRendererProps) => {
 	const [controlsTarget, setControlsTarget] = useState<THREE.Object3D | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
@@ -267,12 +271,12 @@ const BoqBuildingRenderer = ({
 
 				return (
 					<>
-						<mesh ref={buildingRef} position={buildingPosition} key="flat">
+						<mesh ref={buildingRef} position={buildingPosition} key="flat" onPointerDown={onBuildingClick}>
 							<boxGeometry args={[buildingWidth, buildingHeight, buildingLength]} />
 							<meshStandardMaterial color="lightgray" />
 						</mesh>
 
-						{transformTarget === "building" && controlsTarget && (
+						{transformTarget === "building" && controlsTarget && !disableTransform && (
 							<TransformControls
 								key={"flat-controls"}
 								showX={transformMode !== "rotate"}

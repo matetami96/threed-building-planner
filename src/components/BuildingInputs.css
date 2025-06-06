@@ -16,3 +16,7 @@
 .building-inputs .coordinates {
 	margin-bottom: 1rem;
 }
+
+.building-inputs input[disabled] {
+	cursor: not-allowed;
+}

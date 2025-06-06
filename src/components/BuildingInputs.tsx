@@ -8,6 +8,7 @@ type BuildingInputsProps = {
 	currentLocation: { lat: number; lng: number };
 	currentBuildingType: "flat" | "saddle" | "hipped";
 	buildingProps: BoqBuildingFlat | BoqBuildingSaddle | BoqBuildingHipped;
+	disableInputs: boolean;
 	onChangeBuildingState: (key: string, value: number | number[]) => void;
 };
 
@@ -15,6 +16,7 @@ const BuildingInputs = ({
 	currentLocation,
 	currentBuildingType,
 	buildingProps,
+	disableInputs,
 	onChangeBuildingState,
 }: BuildingInputsProps) => {
 	const { roofType } = buildingProps;
@@ -36,6 +38,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingWidth}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -51,6 +54,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingHeight}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -66,6 +70,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingLength}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -81,6 +86,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingPosition[0]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -94,6 +100,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingPosition[2]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -107,6 +114,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingRotation[1]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -134,6 +142,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={groupPosition[0]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -147,6 +156,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={groupPosition[2]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -160,6 +170,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={groupRotation[1]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -173,6 +184,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingHeight}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -188,6 +200,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={roofHeight}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -203,6 +216,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingWidth}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
@@ -219,6 +233,7 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							step="0.1"
+							disabled={disableInputs}
 							value={buildingLength}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);

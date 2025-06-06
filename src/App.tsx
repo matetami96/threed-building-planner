@@ -1,6 +1,7 @@
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { useCallback, useEffect, useState } from "react";
+import * as THREE from "three";
+import { Canvas, ThreeEvent } from "@react-three/fiber";
+import { Line, OrbitControls } from "@react-three/drei";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import "./App.css";
 import BoqBuilding from "./models/BoqBuilding";
@@ -17,7 +18,10 @@ import BuildingInputs from "./components/BuildingInputs";
 
 const START_LOCATION = { lat: 45.8664544, lng: 25.7981645 };
 const hiddenBuildingsInput = document.querySelector<HTMLInputElement>("[name='buildings']")!;
+const segmentInputContainer = document.querySelector<HTMLDivElement>("#segment-inputs")!;
+const loopInputs = document.querySelectorAll<HTMLInputElement>("[name='BoqGuardRails[conf_open_closed]']");
 // const availableBuildingTypes = ["flat", "saddle", "hipped"];
+// const buildingsData = {};
 declare const availableBuildingTypes: string[];
 declare const buildingsData: BuildingWithLocation | object;
 
@@ -31,6 +35,60 @@ const App = () => {
 	const [currentTransformMode, setCurrentTransformMode] = useState<"translate" | "scale" | "rotate">("translate");
 	const [buildingAdded, setBuildingAdded] = useState(false);
 	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
+	const [enableDrawing, setEnableDrawing] = useState(false);
+	const [drawingFinished, setDrawingFinished] = useState(false);
+	const [drawPoints, setDrawPoints] = useState<THREE.Vector2[]>([]);
+	const [isDrawingClosed, setIsDrawingClosed] = useState(false);
+	const [closingPointIndex, setClosingPointIndex] = useState<number | null>(null);
+
+	const drawingSegments = useMemo(() => {
+		if (drawPoints.length < 2) return [];
+
+		const segments: { from: THREE.Vector2; to: THREE.Vector2; length: number }[] = [];
+
+		for (let i = 1; i < drawPoints.length; i++) {
+			const from = drawPoints[i - 1];
+			const to = drawPoints[i];
+			segments.push({ from, to, length: from.distanceTo(to) });
+		}
+
+		// Add closing segment if shape is closed
+		if (isDrawingClosed && closingPointIndex !== null) {
+			const from = drawPoints.at(-1)!;
+			const to = drawPoints[closingPointIndex];
+			segments.push({ from, to, length: from.distanceTo(to) });
+		}
+
+		return segments;
+	}, [drawPoints, isDrawingClosed, closingPointIndex]);
+
+	const handleBuildingClick = (e: ThreeEvent<PointerEvent>) => {
+		if (!enableDrawing || isDrawingClosed || drawingFinished) return;
+
+		const point = e.point;
+		const clicked = new THREE.Vector2(point.x, point.z);
+
+		setDrawPoints((prev) => {
+			const threshold = 0.02;
+
+			// Check if click is near any existing point
+			const index = prev.findIndex((p) => clicked.distanceTo(p) < threshold);
+
+			if (index !== -1) {
+				if (index === prev.length - 1 || index === prev.length - 2) {
+					setDrawingFinished(true);
+					return prev;
+				}
+
+				setIsDrawingClosed(true);
+				setClosingPointIndex(index);
+				setDrawingFinished(true);
+				return prev;
+			}
+
+			return [...prev, clicked];
+		});
+	};
 
 	const handleLocationSelect = (lat: number, lng: number) => {
 		const mapUrl = getGoogleMapImageUrl(lat, lng);
@@ -71,6 +129,7 @@ const App = () => {
 			setBuildingAdded(true);
 			building!.location = location;
 			hiddenBuildingsInput.value = JSON.stringify(building);
+			// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(building);
 			console.log("building data when first added:", building);
 		},
 		[]
@@ -92,6 +151,53 @@ const App = () => {
 		setCurrentBuildingData((prev) => prev && { ...prev, [key]: value });
 		const updatedBuildingData = { ...currentBuildingData, [key]: value };
 		hiddenBuildingsInput.value = JSON.stringify(updatedBuildingData);
+		// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(updatedBuildingData);
+	};
+
+	const handleResetDrawing = () => {
+		setDrawingFinished(false);
+		setDrawPoints([]);
+		setIsDrawingClosed(false);
+		setClosingPointIndex(null);
+		loopInputs.forEach((input) => (input.checked = false));
+		segmentInputContainer.innerHTML = "";
+	};
+
+	const handleLoadFromDrawing = () => {
+		loopInputs.forEach((input) => {
+			if (input.value === "c" && isDrawingClosed) {
+				input.checked = true;
+			} else if (input.value === "o" && !isDrawingClosed) {
+				input.checked = true;
+			}
+		});
+		drawingSegments.forEach((segment, index) => {
+			const rowDiv = document.createElement("div");
+			rowDiv.className = "row";
+
+			const innerDiv = document.createElement("div");
+			innerDiv.className = "col-md-3 col-sm-6 col-xs-12";
+
+			const inputDiv = document.createElement("div");
+			inputDiv.className = `text-input-compact field-boqguardrails-conf_segment_lengths-${index}`;
+
+			const input = document.createElement("input");
+			input.type = "text";
+			input.id = `boqguardrails-conf_segment_lengths-${index}`;
+			input.className = "text-right form-control";
+			input.name = `BoqGuardRails[conf_segment_lengths][${index}]`;
+			input.maxLength = 4;
+			input.value = segment.length.toFixed(2);
+
+			const helpBlock = document.createElement("div");
+			helpBlock.className = "help-block";
+
+			inputDiv.appendChild(input);
+			inputDiv.appendChild(helpBlock);
+			innerDiv.appendChild(inputDiv);
+			rowDiv.appendChild(innerDiv);
+			segmentInputContainer.appendChild(rowDiv);
+		});
 	};
 
 	useEffect(() => {
@@ -106,6 +212,7 @@ const App = () => {
 			setCurrentBuildingData(initialBuildingData);
 			setBuildingAdded(true);
 			hiddenBuildingsInput.value = JSON.stringify(initialBuildingData);
+			// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(initialBuildingData);
 			console.log("Initial building data loaded:", initialBuildingData);
 		}
 	}, []);
@@ -126,6 +233,7 @@ const App = () => {
 
 	return (
 		<div className="app-container">
+			{/* <input type="hidden" name="buildings" value={""} /> */}
 			<div className="canvas-wrapper">
 				<SearchBar onLocationSelect={handleLocationSelect} />
 				<div className="canvas-container">
@@ -144,11 +252,41 @@ const App = () => {
 								transformTarget={currentTransformTarget}
 								transformMode={currentTransformMode}
 								buildingProps={currentBuildingData}
+								disableTransform={enableDrawing}
 								onTransformUpdate={(updated) => {
 									setCurrentBuildingData(updated);
 									updated.location = currentlySelectedLocation;
 									hiddenBuildingsInput.value = JSON.stringify(updated);
+									// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(updated);
 								}}
+								onBuildingClick={handleBuildingClick}
+							/>
+						)}
+						{drawPoints.map((p, i) => (
+							<mesh key={i} position={[p.x, currentBuildingData!.buildingHeight + 0.005, p.y]}>
+								<sphereGeometry args={[0.01, 18, 18]} />
+								<meshStandardMaterial color="yellow" />
+							</mesh>
+						))}
+						{drawPoints.length >= 2 && (
+							<Line
+								points={drawPoints.map((p) => [p.x, currentBuildingData!.buildingHeight + 0.004, p.y])}
+								color="yellow"
+								lineWidth={3}
+							/>
+						)}
+						{isDrawingClosed && closingPointIndex !== null && drawPoints.length > 1 && (
+							<Line
+								points={[
+									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight + 0.004, drawPoints.at(-1)!.y], // from last placed
+									[
+										drawPoints[closingPointIndex].x,
+										currentBuildingData!.buildingHeight + 0.004,
+										drawPoints[closingPointIndex].y,
+									], // to closing match
+								]}
+								color="yellow"
+								lineWidth={3}
 							/>
 						)}
 						<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
@@ -294,8 +432,49 @@ const App = () => {
 						currentLocation={currentlySelectedLocation!}
 						currentBuildingType={currentBuildingType!}
 						buildingProps={currentBuildingData}
+						disableInputs={enableDrawing}
 						onChangeBuildingState={handleBuildingInputChange}
 					/>
+				)}
+				{buildingAdded && (
+					<>
+						<h3>Drawing mode {`${enableDrawing ? "enabled" : "disabled"}`}</h3>
+						<div className="btn-container">
+							<button className="btn" onClick={() => setEnableDrawing((prev) => !prev)}>
+								Toggle Draw Mode
+							</button>
+						</div>
+					</>
+				)}
+				{drawPoints.length > 0 && buildingAdded && (
+					<>
+						<h3>Draw actions</h3>
+						<div className="btn-container">
+							<button className="btn" onClick={handleResetDrawing}>
+								Reset Drawing
+							</button>
+							{drawingFinished && (
+								<button className="btn" onClick={handleLoadFromDrawing}>
+									Load from drawing
+								</button>
+							)}
+						</div>
+					</>
+				)}
+				{drawPoints.length > 1 && (
+					<div className="drawing-metrics">
+						<h4>Drawing Summary</h4>
+						<p>Segments: {drawingSegments.length}</p>
+						<p>Closed: {isDrawingClosed ? "Yes" : "No"}</p>
+						<p>Lengths:</p>
+						<ul>
+							{drawingSegments.map((seg, i) => (
+								<li key={i}>
+									#{i + 1}: {seg.length.toFixed(2)} m
+								</li>
+							))}
+						</ul>
+					</div>
 				)}
 			</div>
 		</div>

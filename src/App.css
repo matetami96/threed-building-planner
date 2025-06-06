@@ -67,6 +67,7 @@ input {
 	align-items: center;
 	margin-top: 1rem;
 	width: 100%;
+	gap: 0.5rem;
 }
 
 .btn {
@@ -87,6 +88,13 @@ input {
 
 .btn-container .btn:focus {
 	color: white;
+}
+
+.drawing-metrics {
+	margin-top: 1rem;
+	background: #eee;
+	padding: 10px;
+	border-radius: 6px;
 }
 
 @media (max-width: 1210px) {
