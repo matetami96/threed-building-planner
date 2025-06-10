@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { Vector2 } from "three";
 import { Canvas, ThreeEvent } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -37,26 +37,29 @@ const App = () => {
 	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
 	const [enableDrawing, setEnableDrawing] = useState(false);
 	const [drawingFinished, setDrawingFinished] = useState(false);
-	const [drawPoints, setDrawPoints] = useState<THREE.Vector2[]>([]);
+	const [drawPoints, setDrawPoints] = useState<Vector2[]>([]);
 	const [isDrawingClosed, setIsDrawingClosed] = useState(false);
 	const [closingPointIndex, setClosingPointIndex] = useState<number | null>(null);
 
 	const drawingSegments = useMemo(() => {
 		if (drawPoints.length < 2) return [];
 
-		const segments: { from: THREE.Vector2; to: THREE.Vector2; length: number }[] = [];
+		const segments: { from: Vector2; to: Vector2; length: number }[] = [];
 
 		for (let i = 1; i < drawPoints.length; i++) {
 			const from = drawPoints[i - 1];
 			const to = drawPoints[i];
-			segments.push({ from, to, length: from.distanceTo(to) });
+			segments.push({ from, to, length: Math.round(from.distanceTo(to)) });
 		}
 
 		// Add closing segment if shape is closed
-		if (isDrawingClosed && closingPointIndex !== null) {
+		if (
+			(isDrawingClosed && closingPointIndex !== null) ||
+			(!isDrawingClosed && closingPointIndex !== null && drawPoints.length === 3)
+		) {
 			const from = drawPoints.at(-1)!;
 			const to = drawPoints[closingPointIndex];
-			segments.push({ from, to, length: from.distanceTo(to) });
+			segments.push({ from, to, length: Math.round(from.distanceTo(to)) });
 		}
 
 		return segments;
@@ -66,7 +69,7 @@ const App = () => {
 		if (!enableDrawing || isDrawingClosed || drawingFinished) return;
 
 		const point = e.point;
-		const clicked = new THREE.Vector2(point.x, point.z);
+		const clicked = new Vector2(point.x, point.z);
 
 		setDrawPoints((prev) => {
 			const threshold = 0.02;
@@ -76,6 +79,12 @@ const App = () => {
 
 			if (index !== -1) {
 				if (index === prev.length - 1 || index === prev.length - 2) {
+					setDrawingFinished(true);
+					return prev;
+				}
+
+				if (prev.length === 3 && index === 0) {
+					setClosingPointIndex(index);
 					setDrawingFinished(true);
 					return prev;
 				}
@@ -161,6 +170,11 @@ const App = () => {
 		setClosingPointIndex(null);
 		loopInputs.forEach((input) => (input.checked = false));
 		segmentInputContainer.innerHTML = "";
+		const hiddenInputData: BuildingWithLocation = JSON.parse(hiddenBuildingsInput.value);
+		delete hiddenInputData["hasClosedLoopSystem"];
+		delete hiddenInputData["segments"];
+		delete hiddenInputData["closingPointIndex"];
+		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
 	const handleLoadFromDrawing = () => {
@@ -171,6 +185,7 @@ const App = () => {
 				input.checked = true;
 			}
 		});
+		segmentInputContainer.innerHTML = "";
 		drawingSegments.forEach((segment, index) => {
 			const rowDiv = document.createElement("div");
 			rowDiv.className = "row";
@@ -187,7 +202,7 @@ const App = () => {
 			input.className = "text-right form-control";
 			input.name = `BoqGuardRails[conf_segment_lengths][${index}]`;
 			input.maxLength = 4;
-			input.value = segment.length.toFixed(2);
+			input.value = segment.length.toString();
 
 			const helpBlock = document.createElement("div");
 			helpBlock.className = "help-block";
@@ -198,6 +213,11 @@ const App = () => {
 			rowDiv.appendChild(innerDiv);
 			segmentInputContainer.appendChild(rowDiv);
 		});
+		const hiddenInputData: BuildingWithLocation = JSON.parse(hiddenBuildingsInput.value);
+		hiddenInputData.hasClosedLoopSystem = isDrawingClosed;
+		hiddenInputData.segments = drawingSegments;
+		hiddenInputData.closingPointIndex = closingPointIndex!;
+		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
 	useEffect(() => {
@@ -213,6 +233,22 @@ const App = () => {
 			setBuildingAdded(true);
 			hiddenBuildingsInput.value = JSON.stringify(initialBuildingData);
 			// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(initialBuildingData);
+			if ("hasClosedLoopSystem" in initialBuildingData && "segments" in initialBuildingData) {
+				// we have segments and a closed loop system
+				setEnableDrawing(true);
+				setDrawingFinished(true);
+				setIsDrawingClosed(initialBuildingData.hasClosedLoopSystem!);
+				setClosingPointIndex(initialBuildingData.closingPointIndex!);
+				const restoredPoints: Vector2[] = [];
+
+				if (initialBuildingData.segments!.length > 0) {
+					initialBuildingData.segments!.forEach((segment) => {
+						restoredPoints.push(new Vector2(segment.from.x, segment.from.y));
+					});
+				}
+
+				setDrawPoints(restoredPoints);
+			}
 			console.log("Initial building data loaded:", initialBuildingData);
 		}
 	}, []);
@@ -284,6 +320,20 @@ const App = () => {
 										currentBuildingData!.buildingHeight + 0.004,
 										drawPoints[closingPointIndex].y,
 									], // to closing match
+								]}
+								color="yellow"
+								lineWidth={3}
+							/>
+						)}
+						{!isDrawingClosed && closingPointIndex !== null && drawPoints.length === 3 && drawingFinished && (
+							<Line
+								points={[
+									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight + 0.004, drawPoints.at(-1)!.y],
+									[
+										drawPoints[closingPointIndex].x,
+										currentBuildingData!.buildingHeight + 0.004,
+										drawPoints[closingPointIndex].y,
+									],
 								]}
 								color="yellow"
 								lineWidth={3}
@@ -446,35 +496,20 @@ const App = () => {
 						</div>
 					</>
 				)}
-				{drawPoints.length > 0 && buildingAdded && (
+				{drawPoints.length > 0 && buildingAdded && enableDrawing && (
 					<>
 						<h3>Draw actions</h3>
 						<div className="btn-container">
 							<button className="btn" onClick={handleResetDrawing}>
 								Reset Drawing
 							</button>
-							{drawingFinished && (
+							{drawingFinished && drawPoints.length > 1 && (
 								<button className="btn" onClick={handleLoadFromDrawing}>
 									Load from drawing
 								</button>
 							)}
 						</div>
 					</>
-				)}
-				{drawPoints.length > 1 && (
-					<div className="drawing-metrics">
-						<h4>Drawing Summary</h4>
-						<p>Segments: {drawingSegments.length}</p>
-						<p>Closed: {isDrawingClosed ? "Yes" : "No"}</p>
-						<p>Lengths:</p>
-						<ul>
-							{drawingSegments.map((seg, i) => (
-								<li key={i}>
-									#{i + 1}: {seg.length.toFixed(2)} m
-								</li>
-							))}
-						</ul>
-					</div>
 				)}
 			</div>
 		</div>
