@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import BoqBuilding from "../models/BoqBuilding";
 
 export function extractTransform(obj: THREE.Object3D) {
 	const position = new THREE.Vector3();
@@ -17,3 +18,19 @@ export function extractTransform(obj: THREE.Object3D) {
 		scale: [scale.x, scale.y, scale.z] as [number, number, number],
 	};
 }
+
+export const getTransformedPoints = (
+	points: THREE.Vector2[],
+	currentBuildingData: BoqBuilding
+): [number, number, number][] => {
+	const matrix = new THREE.Matrix4().compose(
+		new THREE.Vector3(...currentBuildingData!.buildingPosition),
+		new THREE.Quaternion().setFromEuler(new THREE.Euler(...currentBuildingData!.buildingRotation)),
+		new THREE.Vector3(1, 1, 1)
+	);
+
+	return points.map((p) => {
+		const localVec = new THREE.Vector3(p.x, 0, p.y).applyMatrix4(matrix);
+		return [localVec.x, currentBuildingData!.buildingHeight, localVec.z];
+	});
+};

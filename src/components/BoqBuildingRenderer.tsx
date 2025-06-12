@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import BoqBuildingFlat from "../models/BoqBuildingFlat";
 import BoqBuildingHipped from "../models/BoqBuildingHipped";
 import BoqBuildingSaddle from "../models/BoqBuildingSaddle";
-// import { extractTransform } from "../utils/extractObjectTransform";
+// import { extractTransform } from "../utils/utils";
 import { BoqBuilding, BuildingWithLocation } from "../types";
 
 type BoqBuildingRendererProps = {

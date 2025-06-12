@@ -1,4 +1,4 @@
-import { Vector2 } from "three";
+import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from "three";
 import { Canvas, ThreeEvent } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -15,6 +15,8 @@ import Platform from "./components/Platform";
 import SearchBar from "./components/SearchBar";
 import BoqBuildingRenderer from "./components/BoqBuildingRenderer";
 import BuildingInputs from "./components/BuildingInputs";
+import DraggablePoint from "./components/Draggablepoint";
+import { getTransformedPoints } from "./utils/utils";
 
 const START_LOCATION = { lat: 45.8664544, lng: 25.7981645 };
 const hiddenBuildingsInput = document.querySelector<HTMLInputElement>("[name='buildings']")!;
@@ -40,6 +42,7 @@ const App = () => {
 	const [drawPoints, setDrawPoints] = useState<Vector2[]>([]);
 	const [isDrawingClosed, setIsDrawingClosed] = useState(false);
 	const [closingPointIndex, setClosingPointIndex] = useState<number | null>(null);
+	const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
 
 	const drawingSegments = useMemo(() => {
 		if (drawPoints.length < 2) return [];
@@ -66,17 +69,28 @@ const App = () => {
 	}, [drawPoints, isDrawingClosed, closingPointIndex]);
 
 	const handleBuildingClick = (e: ThreeEvent<PointerEvent>) => {
-		if (!enableDrawing || isDrawingClosed || drawingFinished) return;
+		if (!enableDrawing || isDrawingClosed || drawingFinished || !currentBuildingData) return;
 
-		const point = e.point;
-		const clicked = new Vector2(point.x, point.z);
+		const worldPoint = new Vector3(e.point.x, 0, e.point.z);
+		const clickedXZ = new Vector2(worldPoint.x, worldPoint.z);
 
 		setDrawPoints((prev) => {
 			const threshold = 0.5;
 
-			// Check if click is near any existing point
-			const index = prev.findIndex((p) => clicked.distanceTo(p) < threshold);
+			// Check if click is near an existing point
+			const index = prev.findIndex((p) => {
+				// Convert local point to world space to compare with the clicked position
+				const localVec = new Vector3(p.x, 0, p.y);
+				const matrix = new Matrix4().compose(
+					new Vector3(...currentBuildingData.buildingPosition),
+					new Quaternion().setFromEuler(new Euler(...currentBuildingData.buildingRotation)),
+					new Vector3(1, 1, 1)
+				);
+				localVec.applyMatrix4(matrix);
+				return new Vector2(localVec.x, localVec.z).distanceTo(clickedXZ) < threshold;
+			});
 
+			// Closing shape logic
 			if (index !== -1) {
 				if (index === prev.length - 1 || index === prev.length - 2) {
 					setDrawingFinished(true);
@@ -95,7 +109,19 @@ const App = () => {
 				return prev;
 			}
 
-			return [...prev, clicked];
+			// 🔁 New logic: convert worldPoint to local space
+			const inverseMatrix = new Matrix4()
+				.compose(
+					new Vector3(...currentBuildingData.buildingPosition),
+					new Quaternion().setFromEuler(new Euler(...currentBuildingData.buildingRotation)),
+					new Vector3(1, 1, 1)
+				)
+				.invert();
+
+			const localPoint = worldPoint.clone().applyMatrix4(inverseMatrix);
+			const localXZ = new Vector2(localPoint.x, localPoint.z);
+
+			return [...prev, localXZ];
 		});
 	};
 
@@ -300,47 +326,36 @@ const App = () => {
 								onBuildingClick={handleBuildingClick}
 							/>
 						)}
-						{drawPoints.map((p, i) => (
-							<mesh
-								key={i}
-								position={[p.x, currentBuildingData!.buildingHeight + 0.03, p.y]}
-								rotation={[-Math.PI / 2, 0, 0]}
-							>
-								<circleGeometry args={[0.15, 32]} />
-								<meshStandardMaterial color="yellow" />
-							</mesh>
+						{drawPoints.map((point, index) => (
+							<DraggablePoint
+								key={index}
+								index={index}
+								initial={point}
+								y={currentBuildingData!.buildingHeight + 0.03}
+								enabled={enableDrawing && drawingFinished}
+								isActive={index === activePointIndex}
+								onClick={() => setActivePointIndex(index)}
+								onUpdate={(idx, newPos) => {
+									const updated = [...drawPoints];
+									updated[idx] = newPos;
+									setDrawPoints(updated);
+								}}
+								buildingData={currentBuildingData!}
+							/>
 						))}
 						{drawPoints.length >= 2 && (
-							<Line
-								points={drawPoints.map((p) => [p.x, currentBuildingData!.buildingHeight, p.y])}
-								color="yellow"
-								lineWidth={5}
-							/>
+							<Line points={getTransformedPoints(drawPoints, currentBuildingData!)} color="yellow" lineWidth={5} />
 						)}
 						{isDrawingClosed && closingPointIndex !== null && drawPoints.length > 1 && (
 							<Line
-								points={[
-									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight, drawPoints.at(-1)!.y], // from last placed
-									[
-										drawPoints[closingPointIndex].x,
-										currentBuildingData!.buildingHeight,
-										drawPoints[closingPointIndex].y,
-									], // to closing match
-								]}
+								points={getTransformedPoints([drawPoints.at(-1)!, drawPoints[closingPointIndex]], currentBuildingData!)}
 								color="yellow"
 								lineWidth={5}
 							/>
 						)}
 						{!isDrawingClosed && closingPointIndex !== null && drawPoints.length === 3 && drawingFinished && (
 							<Line
-								points={[
-									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight, drawPoints.at(-1)!.y],
-									[
-										drawPoints[closingPointIndex].x,
-										currentBuildingData!.buildingHeight,
-										drawPoints[closingPointIndex].y,
-									],
-								]}
+								points={getTransformedPoints([drawPoints.at(-1)!, drawPoints[closingPointIndex]], currentBuildingData!)}
 								color="yellow"
 								lineWidth={5}
 							/>
