@@ -34,15 +34,14 @@ const BuildingInputs = ({
 						{currentLocation.lat}, {currentLocation.lng}
 					</p>
 					<label>
-						<p>Width:</p>
+						<p>Width (m):</p>
 						<input
 							type="number"
-							step="0.1"
 							disabled={disableInputs}
 							value={buildingWidth}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
-								if (val >= 0 && val <= 2) {
+								if (val >= 5 && val <= 60) {
 									onChangeBuildingState("buildingWidth", val);
 								}
 							}}
@@ -50,15 +49,14 @@ const BuildingInputs = ({
 					</label>
 					<br />
 					<label>
-						<p>Height:</p>
+						<p>Height (m):</p>
 						<input
 							type="number"
-							step="0.1"
 							disabled={disableInputs}
 							value={buildingHeight}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
-								if (val >= 0 && val <= 2) {
+								if (val >= 2 && val <= 20) {
 									onChangeBuildingState("buildingHeight", val);
 								}
 							}}
@@ -66,15 +64,14 @@ const BuildingInputs = ({
 					</label>
 					<br />
 					<label>
-						<p>Length:</p>
+						<p>Length (m):</p>
 						<input
 							type="number"
-							step="0.1"
 							disabled={disableInputs}
 							value={buildingLength}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
-								if (val >= 0 && val <= 2) {
+								if (val >= 5 && val <= 60) {
 									onChangeBuildingState("buildingLength", val);
 								}
 							}}
@@ -85,7 +82,6 @@ const BuildingInputs = ({
 						<p>Position X:</p>
 						<input
 							type="number"
-							step="0.1"
 							disabled={disableInputs}
 							value={buildingPosition[0]}
 							onChange={(e) => {
@@ -99,7 +95,6 @@ const BuildingInputs = ({
 						<p>Position Z:</p>
 						<input
 							type="number"
-							step="0.1"
 							disabled={disableInputs}
 							value={buildingPosition[2]}
 							onChange={(e) => {
@@ -113,7 +108,6 @@ const BuildingInputs = ({
 						<p>Rotation Y:</p>
 						<input
 							type="number"
-							step="0.1"
 							disabled={disableInputs}
 							value={buildingRotation[1]}
 							onChange={(e) => {

@@ -72,7 +72,7 @@ const App = () => {
 		const clicked = new Vector2(point.x, point.z);
 
 		setDrawPoints((prev) => {
-			const threshold = 0.02;
+			const threshold = 0.5;
 
 			// Check if click is near any existing point
 			const index = prev.findIndex((p) => clicked.distanceTo(p) < threshold);
@@ -276,13 +276,15 @@ const App = () => {
 					<Canvas
 						shadows
 						camera={{
-							position: [0, 1, 1.75],
-							fov: 50,
+							position: [0, 90, 100],
+							zoom: 3,
 						}}
 					>
 						<ambientLight intensity={0.5} />
 						<directionalLight position={[10, 10, 10]} intensity={1} castShadow />
-						{mapImageUrl && <Platform mapImageUrl={mapImageUrl} />}
+						{mapImageUrl && (
+							<Platform mapImageUrl={mapImageUrl} currentlySelectedLocation={currentlySelectedLocation} />
+						)}
 						{currentBuildingData && (
 							<BoqBuildingRenderer
 								transformTarget={currentTransformTarget}
@@ -299,44 +301,48 @@ const App = () => {
 							/>
 						)}
 						{drawPoints.map((p, i) => (
-							<mesh key={i} position={[p.x, currentBuildingData!.buildingHeight + 0.005, p.y]}>
-								<sphereGeometry args={[0.01, 18, 18]} />
+							<mesh
+								key={i}
+								position={[p.x, currentBuildingData!.buildingHeight + 0.03, p.y]}
+								rotation={[-Math.PI / 2, 0, 0]}
+							>
+								<circleGeometry args={[0.15, 32]} />
 								<meshStandardMaterial color="yellow" />
 							</mesh>
 						))}
 						{drawPoints.length >= 2 && (
 							<Line
-								points={drawPoints.map((p) => [p.x, currentBuildingData!.buildingHeight + 0.004, p.y])}
+								points={drawPoints.map((p) => [p.x, currentBuildingData!.buildingHeight, p.y])}
 								color="yellow"
-								lineWidth={3}
+								lineWidth={5}
 							/>
 						)}
 						{isDrawingClosed && closingPointIndex !== null && drawPoints.length > 1 && (
 							<Line
 								points={[
-									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight + 0.004, drawPoints.at(-1)!.y], // from last placed
+									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight, drawPoints.at(-1)!.y], // from last placed
 									[
 										drawPoints[closingPointIndex].x,
-										currentBuildingData!.buildingHeight + 0.004,
+										currentBuildingData!.buildingHeight,
 										drawPoints[closingPointIndex].y,
 									], // to closing match
 								]}
 								color="yellow"
-								lineWidth={3}
+								lineWidth={5}
 							/>
 						)}
 						{!isDrawingClosed && closingPointIndex !== null && drawPoints.length === 3 && drawingFinished && (
 							<Line
 								points={[
-									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight + 0.004, drawPoints.at(-1)!.y],
+									[drawPoints.at(-1)!.x, currentBuildingData!.buildingHeight, drawPoints.at(-1)!.y],
 									[
 										drawPoints[closingPointIndex].x,
-										currentBuildingData!.buildingHeight + 0.004,
+										currentBuildingData!.buildingHeight,
 										drawPoints[closingPointIndex].y,
 									],
 								]}
 								color="yellow"
-								lineWidth={3}
+								lineWidth={5}
 							/>
 						)}
 						<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
