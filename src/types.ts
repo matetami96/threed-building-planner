@@ -9,6 +9,7 @@ export type BuildingWithLocation = BoqBuilding & {
 	hasClosedLoopSystem?: boolean;
 	closingPointIndex?: number;
 	segments?: { from: Vector2; to: Vector2; length: number }[];
+	obstacles?: RooftopObstacleType[];
 };
 
 export type RooftopObstacleType = {

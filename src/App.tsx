@@ -193,9 +193,21 @@ const App = () => {
 		// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(updatedBuildingData);
 	};
 
+	const handlePlaceObstacle = () => {
+		const newObstacle: RooftopObstacleType = {
+			id: uuidv4(),
+			position: [0, currentBuildingData!.buildingHeight / 2, 0],
+			scale: [1, 0.5, 1],
+		};
+		setObstacles((prev) => [...prev, newObstacle]);
+		setActiveObstacleId(newObstacle.id);
+	};
+
 	const handleResetDrawing = () => {
 		setDrawingFinished(false);
 		setDrawPoints([]);
+		setObstacles([]);
+		setActiveObstacleId(null);
 		setIsDrawingClosed(false);
 		setClosingPointIndex(null);
 		loopInputs.forEach((input) => (input.checked = false));
@@ -204,6 +216,7 @@ const App = () => {
 		delete hiddenInputData["hasClosedLoopSystem"];
 		delete hiddenInputData["segments"];
 		delete hiddenInputData["closingPointIndex"];
+		delete hiddenInputData["obstacles"];
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
@@ -247,6 +260,7 @@ const App = () => {
 		hiddenInputData.hasClosedLoopSystem = isDrawingClosed;
 		hiddenInputData.segments = drawingSegments;
 		hiddenInputData.closingPointIndex = closingPointIndex!;
+		hiddenInputData.obstacles = obstacles;
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
@@ -306,6 +320,12 @@ const App = () => {
 				}
 
 				setDrawPoints(restoredPoints);
+			}
+			if ("obstacles" in initialBuildingData) {
+				if (initialBuildingData.obstacles!.length > 0) {
+					setObstacles(initialBuildingData.obstacles!);
+					setActiveObstacleId(initialBuildingData.obstacles![0].id);
+				}
 			}
 			console.log("Initial building data loaded:", initialBuildingData);
 		}
@@ -543,18 +563,7 @@ const App = () => {
 				{buildingAdded && (
 					<>
 						<div className="btn-container">
-							<button
-								className="btn"
-								onClick={() => {
-									const newObstacle: RooftopObstacleType = {
-										id: uuidv4(),
-										position: [0, currentBuildingData!.buildingHeight / 2, 0],
-										scale: [1, 0.5, 1],
-									};
-									setObstacles((prev) => [...prev, newObstacle]);
-									setActiveObstacleId(newObstacle.id);
-								}}
-							>
+							<button className="btn" onClick={handlePlaceObstacle}>
 								+ Add Roof Obstacle
 							</button>
 						</div>

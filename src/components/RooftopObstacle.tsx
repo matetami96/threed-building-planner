@@ -71,7 +71,7 @@ export default function RooftopObstacle({
 					object={controlsTarget}
 					mode={transformMode}
 					showX={transformMode !== "rotate"}
-					showY={transformMode !== "translate" && transformMode !== "rotate"}
+					showY={transformMode !== "translate"}
 					showZ={transformMode !== "rotate"}
 					onMouseUp={() => {
 						const mesh = controlsTarget;

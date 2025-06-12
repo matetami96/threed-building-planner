@@ -108,6 +108,7 @@ const BuildingInputs = ({
 						<p>Rotation Y:</p>
 						<input
 							type="number"
+							step="0.1"
 							disabled={disableInputs}
 							value={buildingRotation[1]}
 							onChange={(e) => {
