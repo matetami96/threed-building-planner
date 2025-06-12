@@ -10,3 +10,9 @@ export type BuildingWithLocation = BoqBuilding & {
 	closingPointIndex?: number;
 	segments?: { from: Vector2; to: Vector2; length: number }[];
 };
+
+export type RooftopObstacleType = {
+	id: string;
+	position: [number, number, number];
+	scale: [number, number, number];
+};

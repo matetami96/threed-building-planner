@@ -2,10 +2,11 @@ import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from "three";
 import { Canvas, ThreeEvent } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 import "./App.css";
 import BoqBuilding from "./models/BoqBuilding";
-import { BuildingWithLocation } from "./types";
+import { BuildingWithLocation, RooftopObstacleType } from "./types";
 import BoqBuildingFlat from "./models/BoqBuildingFlat";
 import BoqBuildingSaddle from "./models/BoqBuildingSaddle";
 import BoqBuildingHipped from "./models/BoqBuildingHipped";
@@ -17,6 +18,7 @@ import BoqBuildingRenderer from "./components/BoqBuildingRenderer";
 import BuildingInputs from "./components/BuildingInputs";
 import DraggablePoint from "./components/Draggablepoint";
 import { getTransformedPoints } from "./utils/utils";
+import RooftopObstacle from "./components/RooftopObstacle";
 
 const START_LOCATION = { lat: 45.8664544, lng: 25.7981645 };
 const hiddenBuildingsInput = document.querySelector<HTMLInputElement>("[name='buildings']")!;
@@ -43,6 +45,8 @@ const App = () => {
 	const [isDrawingClosed, setIsDrawingClosed] = useState(false);
 	const [closingPointIndex, setClosingPointIndex] = useState<number | null>(null);
 	const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
+	const [obstacles, setObstacles] = useState<RooftopObstacleType[]>([]);
+	const [activeObstacleId, setActiveObstacleId] = useState<string | null>(null);
 
 	const drawingSegments = useMemo(() => {
 		if (drawPoints.length < 2) return [];
@@ -246,6 +250,34 @@ const App = () => {
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
+	const renderObstacles = () => {
+		if (!currentBuildingData || obstacles.length === 0) return null;
+
+		const buildingMatrixForRender = new Matrix4().compose(
+			new Vector3(...currentBuildingData.buildingPosition),
+			new Quaternion().setFromEuler(new Euler(...currentBuildingData.buildingRotation)),
+			new Vector3(1, 1, 1)
+		);
+
+		const buildingMatrixInverse = buildingMatrixForRender.clone().invert();
+
+		return obstacles.map((obstacle) => (
+			<RooftopObstacle
+				key={obstacle.id}
+				obstacle={obstacle}
+				buildingMatrix={buildingMatrixForRender}
+				buildingMatrixInverse={buildingMatrixInverse}
+				buildingWidth={currentBuildingData.buildingWidth}
+				buildingLength={currentBuildingData.buildingLength}
+				buildingHeight={currentBuildingData.buildingHeight}
+				isActive={obstacle.id === activeObstacleId}
+				transformMode={currentTransformMode}
+				onClick={() => setActiveObstacleId(obstacle.id)}
+				onUpdate={(updated) => setObstacles((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))}
+			/>
+		));
+	};
+
 	useEffect(() => {
 		if (buildingsData && Object.keys(buildingsData).length > 0) {
 			// Do something if buildingsData is a non-empty object
@@ -326,12 +358,13 @@ const App = () => {
 								onBuildingClick={handleBuildingClick}
 							/>
 						)}
+						{renderObstacles()}
 						{drawPoints.map((point, index) => (
 							<DraggablePoint
 								key={index}
 								index={index}
 								initial={point}
-								y={currentBuildingData!.buildingHeight + 0.03}
+								y={currentBuildingData!.buildingHeight + 0.01}
 								enabled={enableDrawing && drawingFinished}
 								isActive={index === activePointIndex}
 								onClick={() => setActivePointIndex(index)}
@@ -509,6 +542,22 @@ const App = () => {
 				)}
 				{buildingAdded && (
 					<>
+						<div className="btn-container">
+							<button
+								className="btn"
+								onClick={() => {
+									const newObstacle: RooftopObstacleType = {
+										id: uuidv4(),
+										position: [0, currentBuildingData!.buildingHeight / 2, 0],
+										scale: [1, 0.5, 1],
+									};
+									setObstacles((prev) => [...prev, newObstacle]);
+									setActiveObstacleId(newObstacle.id);
+								}}
+							>
+								+ Add Roof Obstacle
+							</button>
+						</div>
 						<h3>Drawing mode {`${enableDrawing ? "enabled" : "disabled"}`}</h3>
 						<div className="btn-container">
 							<button className="btn" onClick={() => setEnableDrawing((prev) => !prev)}>

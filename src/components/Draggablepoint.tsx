@@ -45,11 +45,8 @@ export default function DraggablePoint({
 
 	const handleMouseUp = () => {
 		if (!meshRef.current) return;
-
 		const worldPos = meshRef.current.position.clone();
-
 		const { buildingWidth, buildingLength, buildingPosition, buildingRotation } = buildingData;
-
 		// Step 1: Create inverse matrix to get local space
 		const inverseMatrix = new THREE.Matrix4()
 			.compose(
@@ -58,17 +55,14 @@ export default function DraggablePoint({
 				new THREE.Vector3(1, 1, 1)
 			)
 			.invert();
-
 		// Step 2: Convert world position to local space
 		const localPos = worldPos.clone().applyMatrix4(inverseMatrix);
-
 		// Step 3: Clamp in LOCAL space
 		const halfW = buildingWidth / 2;
 		const halfL = buildingLength / 2;
-
-		localPos.x = THREE.MathUtils.clamp(localPos.x, -halfW, halfW);
-		localPos.z = THREE.MathUtils.clamp(localPos.z, -halfL, halfL);
-
+		const circleRadius = 0.15;
+		localPos.x = THREE.MathUtils.clamp(localPos.x, -halfW + circleRadius, halfW - circleRadius);
+		localPos.z = THREE.MathUtils.clamp(localPos.z, -halfL + circleRadius, halfL - circleRadius);
 		// Step 4: Save only XZ in local space
 		const local2D = new THREE.Vector2(localPos.x, localPos.z);
 		onUpdate(index, local2D);
@@ -79,7 +73,8 @@ export default function DraggablePoint({
 			<mesh
 				ref={meshRef}
 				position={position}
-				// TODO: rotated for flat building but later needs to dynamic for othe roof types
+				// TODO: rotated for flat building but later
+				// needs to be dynamic for other roof types
 				rotation={[-Math.PI / 2, 0, 0]}
 				onClick={(e) => {
 					e.stopPropagation();
