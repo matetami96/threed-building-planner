@@ -26,6 +26,7 @@ export default function DraggablePoint({
 }: Props) {
 	const meshRef = useRef<THREE.Mesh>(null);
 	const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3(initial.x, y, initial.y));
+	const [hovered, setHovered] = useState(false);
 
 	useEffect(() => {
 		// Convert local XZ point into world position
@@ -68,21 +69,30 @@ export default function DraggablePoint({
 		onUpdate(index, local2D);
 	};
 
+	const radius = hovered ? 0.3 : 0.15;
+	const color = hovered ? "orange" : "yellow";
+
 	return (
 		<>
 			<mesh
 				ref={meshRef}
 				position={position}
-				// TODO: rotated for flat building but later
-				// needs to be dynamic for other roof types
 				rotation={[-Math.PI / 2, 0, 0]}
+				onPointerOver={(e) => {
+					e.stopPropagation();
+					setHovered(true);
+				}}
+				onPointerOut={(e) => {
+					e.stopPropagation();
+					setHovered(false);
+				}}
 				onClick={(e) => {
 					e.stopPropagation();
 					onClick();
 				}}
 			>
-				<circleGeometry args={[0.15, 32]} />
-				<meshStandardMaterial color="yellow" />
+				<circleGeometry args={[radius, 32]} />
+				<meshStandardMaterial color={color} />
 			</mesh>
 
 			{enabled && isActive && (
