@@ -95,6 +95,10 @@ input {
 	border-radius: 6px;
 }
 
+.btn[disabled] {
+	cursor: not-allowed;
+}
+
 @media (max-width: 1210px) {
 	.action-container h3 {
 		text-align: left;

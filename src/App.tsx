@@ -563,7 +563,7 @@ const App = () => {
 				{buildingAdded && (
 					<>
 						<div className="btn-container">
-							<button className="btn" onClick={handlePlaceObstacle}>
+							<button className="btn" onClick={handlePlaceObstacle} disabled={enableDrawing}>
 								+ Add Roof Obstacle
 							</button>
 						</div>
