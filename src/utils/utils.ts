@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import BoqBuilding from "../models/BoqBuilding";
+import { BoqBuilding } from "../types";
 
 export function extractTransform(obj: THREE.Object3D) {
 	const position = new THREE.Vector3();
@@ -24,8 +24,8 @@ export const getTransformedPoints = (
 	currentBuildingData: BoqBuilding
 ): [number, number, number][] => {
 	const matrix = new THREE.Matrix4().compose(
-		new THREE.Vector3(...currentBuildingData!.buildingPosition),
-		new THREE.Quaternion().setFromEuler(new THREE.Euler(...currentBuildingData!.buildingRotation)),
+		new THREE.Vector3(...currentBuildingData!.groupPosition),
+		new THREE.Quaternion().setFromEuler(new THREE.Euler(...currentBuildingData!.groupRotation)),
 		new THREE.Vector3(1, 1, 1)
 	);
 

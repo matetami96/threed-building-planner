@@ -23,7 +23,7 @@ const BuildingInputs = ({
 
 	const renderBuildingInputs = () => {
 		if (currentBuildingType === "flat" && roofType === "flat") {
-			const { buildingWidth, buildingHeight, buildingLength, buildingPosition, buildingRotation } =
+			const { groupPosition, groupRotation, buildingWidth, buildingHeight, buildingLength } =
 				buildingProps as BoqBuildingFlat;
 
 			return (
@@ -83,10 +83,10 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							disabled={disableInputs}
-							value={buildingPosition[0]}
+							value={groupPosition[0]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
-								onChangeBuildingState("buildingPosition", [val, buildingPosition[1], buildingPosition[2]]);
+								onChangeBuildingState("groupPosition", [val, groupPosition[1], groupPosition[2]]);
 							}}
 						/>
 					</label>
@@ -96,10 +96,10 @@ const BuildingInputs = ({
 						<input
 							type="number"
 							disabled={disableInputs}
-							value={buildingPosition[2]}
+							value={groupPosition[2]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
-								onChangeBuildingState("buildingPosition", [buildingPosition[0], buildingPosition[1], val]);
+								onChangeBuildingState("groupPosition", [groupPosition[0], groupPosition[1], val]);
 							}}
 						/>
 					</label>
@@ -110,10 +110,10 @@ const BuildingInputs = ({
 							type="number"
 							step="0.1"
 							disabled={disableInputs}
-							value={buildingRotation[1]}
+							value={groupRotation[1]}
 							onChange={(e) => {
 								const val = parseFloat(e.target.value);
-								onChangeBuildingState("buildingRotation", [buildingRotation[0], val, buildingRotation[2]]);
+								onChangeBuildingState("groupRotation", [groupRotation[0], val, groupRotation[2]]);
 							}}
 						/>
 					</label>

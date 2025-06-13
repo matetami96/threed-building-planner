@@ -16,6 +16,7 @@ type BoqBuildingRendererProps = {
 	disableTransform: boolean;
 	onTransformUpdate?: (updated: BuildingWithLocation) => void;
 	onBuildingClick?: (e: ThreeEvent<PointerEvent>) => void;
+	children?: React.ReactNode;
 };
 
 const BoqBuildingRenderer = ({
@@ -25,6 +26,7 @@ const BoqBuildingRenderer = ({
 	disableTransform,
 	onTransformUpdate,
 	onBuildingClick,
+	children,
 }: BoqBuildingRendererProps) => {
 	const [controlsTarget, setControlsTarget] = useState<THREE.Object3D | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
@@ -58,13 +60,18 @@ const BoqBuildingRenderer = ({
 	}, [transformTarget]);
 
 	useEffect(() => {
-		if (buildingProps.roofType !== "flat" || !buildingRef.current) return;
-		const { buildingPosition, buildingRotation } = buildingProps as BoqBuildingFlat;
+		if (buildingProps.roofType !== "flat" || !groupRef.current || !buildingRef.current) return;
+		const { groupPosition, groupRotation, buildingPosition, buildingRotation } = buildingProps as BoqBuildingFlat;
 
-		const mesh = buildingRef.current;
-		mesh.position.set(...buildingPosition);
-		mesh.rotation.set(...buildingRotation);
-		mesh.scale.set(1, 1, 1);
+		const group = groupRef.current;
+		group.position.set(...groupPosition);
+		group.rotation.set(...groupRotation);
+		group.scale.set(1, 1, 1);
+
+		const building = buildingRef.current;
+		building.position.set(...buildingPosition);
+		building.rotation.set(...buildingRotation);
+		building.scale.set(1, 1, 1);
 	}, [buildingProps]);
 
 	useEffect(() => {
@@ -87,25 +94,27 @@ const BoqBuildingRenderer = ({
 	}, [buildingProps]);
 
 	useFrame(() => {
-		if (buildingProps.roofType === "flat" && buildingRef.current) {
-			const mesh = buildingRef.current;
+		if (buildingProps.roofType === "flat" && groupRef.current && buildingRef.current) {
+			const group = groupRef.current;
+			const building = buildingRef.current;
 
 			// Prevent too small or negative Y scale
-			if (mesh.scale.y < 0.05) {
-				mesh.scale.y = 0.05;
+			if (building.scale.y < 0.05) {
+				building.scale.y = 0.05;
 			}
 
 			// Adjust position to stay on platform
-			mesh.position.y = (buildingProps.buildingHeight * mesh.scale.y) / 2;
+			building.position.y = (buildingProps.buildingHeight * building.scale.y) / 2;
 
-			const newPos: [number, number, number] = [mesh.position.x, mesh.position.y, mesh.position.z];
-			const newRot: [number, number, number] = [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z];
-			const newScale: [number, number, number] = [mesh.scale.x, mesh.scale.y, mesh.scale.z];
+			const newScale: [number, number, number] = [building.scale.x, building.scale.y, building.scale.z];
+			const flatBuildingProps = buildingProps as BoqBuildingFlat;
 
-			const updated = {
-				...buildingProps,
-				buildingPosition: newPos,
-				buildingRotation: newRot,
+			const updated: BoqBuildingFlat = {
+				...flatBuildingProps,
+				groupPosition: [group.position.x, group.position.y, group.position.z],
+				groupRotation: [group.rotation.x, group.rotation.y, group.rotation.z],
+				buildingPosition: [building.position.x, building.position.y, building.position.z],
+				buildingRotation: [building.rotation.x, building.rotation.y, building.rotation.z],
 				buildingWidth: buildingProps.buildingWidth * newScale[0],
 				buildingHeight: buildingProps.buildingHeight * newScale[1],
 				buildingLength: buildingProps.buildingLength * newScale[2],
@@ -267,21 +276,38 @@ const BoqBuildingRenderer = ({
 	const renderBuildingModel = () => {
 		switch (buildingProps.roofType) {
 			case "flat": {
-				const { buildingWidth, buildingHeight, buildingLength, buildingPosition } = buildingProps as BoqBuildingFlat;
+				const { groupPosition, buildingWidth, buildingHeight, buildingLength, buildingPosition } =
+					buildingProps as BoqBuildingFlat;
 
 				return (
 					<>
-						<mesh ref={buildingRef} position={buildingPosition} key="flat" onPointerDown={onBuildingClick}>
-							<boxGeometry args={[buildingWidth, buildingHeight, buildingLength]} />
-							<meshStandardMaterial color="lightgray" />
-						</mesh>
+						<group ref={groupRef} position={groupPosition} key="flat">
+							<mesh ref={buildingRef} position={buildingPosition} onPointerDown={onBuildingClick}>
+								<boxGeometry args={[buildingWidth, buildingHeight, buildingLength]} />
+								<meshStandardMaterial color="lightgray" />
+							</mesh>
+							{children}
+						</group>
+
+						{transformTarget === "group" && controlsTarget && !disableTransform && (
+							<TransformControls
+								key={"flat-controls-group"}
+								showX={transformMode === "translate"}
+								showY={transformMode === "rotate"}
+								showZ={transformMode === "translate"}
+								object={controlsTarget}
+								mode={transformMode}
+								onMouseDown={() => setIsDragging(true)}
+								onMouseUp={() => setIsDragging(false)}
+							/>
+						)}
 
 						{transformTarget === "building" && controlsTarget && !disableTransform && (
 							<TransformControls
-								key={"flat-controls"}
-								showX={transformMode !== "rotate"}
-								showY={transformMode !== "translate"}
-								showZ={transformMode !== "rotate"}
+								key={"flat-controls-building"}
+								showX={transformMode === "scale"}
+								showY={transformMode === "scale"}
+								showZ={transformMode === "scale"}
 								object={controlsTarget}
 								mode={transformMode}
 								onMouseDown={() => setIsDragging(true)}

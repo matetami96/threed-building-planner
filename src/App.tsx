@@ -5,8 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 import "./App.css";
-import BoqBuilding from "./models/BoqBuilding";
-import { BuildingWithLocation, RooftopObstacleType } from "./types";
+import { BoqBuilding, BuildingWithLocation, RooftopObstacleType } from "./types";
 import BoqBuildingFlat from "./models/BoqBuildingFlat";
 import BoqBuildingSaddle from "./models/BoqBuildingSaddle";
 import BoqBuildingHipped from "./models/BoqBuildingHipped";
@@ -86,8 +85,8 @@ const App = () => {
 				// Convert local point to world space to compare with the clicked position
 				const localVec = new Vector3(p.x, 0, p.y);
 				const matrix = new Matrix4().compose(
-					new Vector3(...currentBuildingData.buildingPosition),
-					new Quaternion().setFromEuler(new Euler(...currentBuildingData.buildingRotation)),
+					new Vector3(...currentBuildingData.groupPosition),
+					new Quaternion().setFromEuler(new Euler(...currentBuildingData.groupRotation)),
 					new Vector3(1, 1, 1)
 				);
 				localVec.applyMatrix4(matrix);
@@ -116,8 +115,8 @@ const App = () => {
 			// 🔁 New logic: convert worldPoint to local space
 			const inverseMatrix = new Matrix4()
 				.compose(
-					new Vector3(...currentBuildingData.buildingPosition),
-					new Quaternion().setFromEuler(new Euler(...currentBuildingData.buildingRotation)),
+					new Vector3(...currentBuildingData.groupPosition),
+					new Quaternion().setFromEuler(new Euler(...currentBuildingData.groupRotation)),
 					new Vector3(1, 1, 1)
 				)
 				.invert();
@@ -146,7 +145,7 @@ const App = () => {
 			switch (_currentBuildingType) {
 				case "flat":
 					building = new BoqBuildingFlat();
-					setCurrentTransformTarget("building");
+					setCurrentTransformTarget("group");
 					setCurrentTransformMode("translate");
 					break;
 				case "saddle":
@@ -267,20 +266,10 @@ const App = () => {
 	const renderObstacles = () => {
 		if (!currentBuildingData || obstacles.length === 0) return null;
 
-		const buildingMatrixForRender = new Matrix4().compose(
-			new Vector3(...currentBuildingData.buildingPosition),
-			new Quaternion().setFromEuler(new Euler(...currentBuildingData.buildingRotation)),
-			new Vector3(1, 1, 1)
-		);
-
-		const buildingMatrixInverse = buildingMatrixForRender.clone().invert();
-
 		return obstacles.map((obstacle) => (
 			<RooftopObstacle
 				key={obstacle.id}
 				obstacle={obstacle}
-				buildingMatrix={buildingMatrixForRender}
-				buildingMatrixInverse={buildingMatrixInverse}
 				buildingWidth={currentBuildingData.buildingWidth}
 				buildingLength={currentBuildingData.buildingLength}
 				buildingHeight={currentBuildingData.buildingHeight}
@@ -298,7 +287,7 @@ const App = () => {
 			const initialBuildingData = JSON.parse(JSON.stringify(buildingsData)) as BuildingWithLocation;
 			setCurrentlySelectedLocation(initialBuildingData.location!);
 			setCurrentBuildingType(initialBuildingData.roofType as "flat" | "saddle" | "hipped");
-			setCurrentTransformTarget(initialBuildingData.roofType === "flat" ? "building" : "group");
+			setCurrentTransformTarget("group");
 			setCurrentTransformMode("translate");
 			setMapImageUrl(getGoogleMapImageUrl(initialBuildingData.location!.lat, initialBuildingData.location!.lng));
 			setCurrentBuildingData(initialBuildingData);
@@ -376,9 +365,10 @@ const App = () => {
 									// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(updated);
 								}}
 								onBuildingClick={handleBuildingClick}
-							/>
+							>
+								{renderObstacles()}
+							</BoqBuildingRenderer>
 						)}
-						{renderObstacles()}
 						{drawPoints.map((point, index) => (
 							<DraggablePoint
 								key={index}
@@ -467,7 +457,7 @@ const App = () => {
 						</button>
 					</div>
 				)}
-				{currentBuildingType && currentBuildingType !== "flat" && buildingAdded && (
+				{currentBuildingType && buildingAdded && (
 					<>
 						<h3>Current transform target: {currentTransformTarget}</h3>
 						<div className="options-container">
@@ -482,17 +472,19 @@ const App = () => {
 									onChange={() => handleChangeTransformTarget("group")}
 								/>
 							</div>
-							<div>
-								<label htmlFor="roof">Focus roof</label>
-								<input
-									type="radio"
-									name="focus-target"
-									id="roof"
-									value={"roof"}
-									checked={currentTransformTarget === "roof"}
-									onChange={() => handleChangeTransformTarget("roof")}
-								/>
-							</div>
+							{currentBuildingType !== "flat" && (
+								<div>
+									<label htmlFor="roof">Focus roof</label>
+									<input
+										type="radio"
+										name="focus-target"
+										id="roof"
+										value={"roof"}
+										checked={currentTransformTarget === "roof"}
+										onChange={() => handleChangeTransformTarget("roof")}
+									/>
+								</div>
+							)}
 							<div>
 								<label htmlFor="building">Focus building</label>
 								<input

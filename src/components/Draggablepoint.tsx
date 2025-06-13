@@ -1,7 +1,7 @@
 import { TransformControls } from "@react-three/drei";
 import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
-import BoqBuilding from "../models/BoqBuilding";
+import { BoqBuilding } from "../types";
 
 type Props = {
 	index: number;
@@ -33,8 +33,8 @@ export default function DraggablePoint({
 		const localPos = new THREE.Vector3(initial.x, 0, initial.y);
 
 		const transformMatrix = new THREE.Matrix4().compose(
-			new THREE.Vector3(...buildingData.buildingPosition),
-			new THREE.Quaternion().setFromEuler(new THREE.Euler(...buildingData.buildingRotation)),
+			new THREE.Vector3(...buildingData.groupPosition),
+			new THREE.Quaternion().setFromEuler(new THREE.Euler(...buildingData.groupRotation)),
 			new THREE.Vector3(1, 1, 1)
 		);
 
@@ -47,12 +47,12 @@ export default function DraggablePoint({
 	const handleMouseUp = () => {
 		if (!meshRef.current) return;
 		const worldPos = meshRef.current.position.clone();
-		const { buildingWidth, buildingLength, buildingPosition, buildingRotation } = buildingData;
+		const { groupPosition, groupRotation, buildingWidth, buildingLength } = buildingData;
 		// Step 1: Create inverse matrix to get local space
 		const inverseMatrix = new THREE.Matrix4()
 			.compose(
-				new THREE.Vector3(...buildingPosition),
-				new THREE.Quaternion().setFromEuler(new THREE.Euler(...buildingRotation)),
+				new THREE.Vector3(...groupPosition),
+				new THREE.Quaternion().setFromEuler(new THREE.Euler(...groupRotation)),
 				new THREE.Vector3(1, 1, 1)
 			)
 			.invert();
