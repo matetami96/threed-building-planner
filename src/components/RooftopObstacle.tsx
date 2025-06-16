@@ -12,6 +12,7 @@ type RooftopObstacleProps = {
 	buildingLength: number;
 	buildingHeight: number;
 	isActive: boolean;
+	enableTransformMode: boolean;
 	transformMode: "translate" | "scale" | "rotate";
 	onClick: () => void;
 	onUpdate: (updated: RooftopObstacleProps["obstacle"]) => void;
@@ -23,6 +24,7 @@ export default function RooftopObstacle({
 	buildingLength,
 	buildingHeight,
 	isActive,
+	enableTransformMode,
 	transformMode,
 	onClick,
 	onUpdate,
@@ -86,7 +88,7 @@ export default function RooftopObstacle({
 				<meshStandardMaterial color="brown" />
 			</mesh>
 
-			{isActive && controlsTarget && (
+			{enableTransformMode && isActive && controlsTarget && (
 				<TransformControls
 					object={controlsTarget}
 					mode={transformMode}

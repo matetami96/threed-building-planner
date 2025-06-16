@@ -104,6 +104,11 @@ input {
 		text-align: left;
 	}
 
+	.btn-container {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
 	.options-container {
 		flex-direction: column;
 		align-items: flex-start;

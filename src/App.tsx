@@ -29,6 +29,9 @@ declare const availableBuildingTypes: string[];
 declare const buildingsData: BuildingWithLocation | object;
 
 const App = () => {
+	const [currentStep, setCurrentStep] = useState<"defineBuilding" | "defineRestrictions" | "defineLayout">(
+		"defineBuilding"
+	);
 	const [mapImageUrl, setMapImageUrl] = useState<string>(getGoogleMapImageUrl(START_LOCATION.lat, START_LOCATION.lng));
 	const [currentlySelectedLocation, setCurrentlySelectedLocation] = useState<{ lat: number; lng: number }>(
 		START_LOCATION
@@ -38,7 +41,6 @@ const App = () => {
 	const [currentTransformMode, setCurrentTransformMode] = useState<"translate" | "scale" | "rotate">("translate");
 	const [buildingAdded, setBuildingAdded] = useState(false);
 	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
-	const [enableDrawing, setEnableDrawing] = useState(false);
 	const [drawingFinished, setDrawingFinished] = useState(false);
 	const [drawPoints, setDrawPoints] = useState<Vector2[]>([]);
 	const [isDrawingClosed, setIsDrawingClosed] = useState(false);
@@ -46,87 +48,7 @@ const App = () => {
 	const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
 	const [obstacles, setObstacles] = useState<RooftopObstacleType[]>([]);
 	const [activeObstacleId, setActiveObstacleId] = useState<string | null>(null);
-
-	const drawingSegments = useMemo(() => {
-		if (drawPoints.length < 2) return [];
-
-		const segments: { from: Vector2; to: Vector2; length: number }[] = [];
-
-		for (let i = 1; i < drawPoints.length; i++) {
-			const from = drawPoints[i - 1];
-			const to = drawPoints[i];
-			segments.push({ from, to, length: Math.round(from.distanceTo(to)) });
-		}
-
-		// Add closing segment if shape is closed
-		if (
-			(isDrawingClosed && closingPointIndex !== null) ||
-			(!isDrawingClosed && closingPointIndex !== null && drawPoints.length === 3)
-		) {
-			const from = drawPoints.at(-1)!;
-			const to = drawPoints[closingPointIndex];
-			segments.push({ from, to, length: Math.round(from.distanceTo(to)) });
-		}
-
-		return segments;
-	}, [drawPoints, isDrawingClosed, closingPointIndex]);
-
-	const handleBuildingClick = (e: ThreeEvent<PointerEvent>) => {
-		if (!enableDrawing || isDrawingClosed || drawingFinished || !currentBuildingData) return;
-
-		const worldPoint = new Vector3(e.point.x, 0, e.point.z);
-		const clickedXZ = new Vector2(worldPoint.x, worldPoint.z);
-
-		setDrawPoints((prev) => {
-			const threshold = 0.5;
-
-			// Check if click is near an existing point
-			const index = prev.findIndex((p) => {
-				// Convert local point to world space to compare with the clicked position
-				const localVec = new Vector3(p.x, 0, p.y);
-				const matrix = new Matrix4().compose(
-					new Vector3(...currentBuildingData.groupPosition),
-					new Quaternion().setFromEuler(new Euler(...currentBuildingData.groupRotation)),
-					new Vector3(1, 1, 1)
-				);
-				localVec.applyMatrix4(matrix);
-				return new Vector2(localVec.x, localVec.z).distanceTo(clickedXZ) < threshold;
-			});
-
-			// Closing shape logic
-			if (index !== -1) {
-				if (index === prev.length - 1 || index === prev.length - 2) {
-					setDrawingFinished(true);
-					return prev;
-				}
-
-				if (prev.length === 3 && index === 0) {
-					setClosingPointIndex(index);
-					setDrawingFinished(true);
-					return prev;
-				}
-
-				setIsDrawingClosed(true);
-				setClosingPointIndex(index);
-				setDrawingFinished(true);
-				return prev;
-			}
-
-			// 🔁 New logic: convert worldPoint to local space
-			const inverseMatrix = new Matrix4()
-				.compose(
-					new Vector3(...currentBuildingData.groupPosition),
-					new Quaternion().setFromEuler(new Euler(...currentBuildingData.groupRotation)),
-					new Vector3(1, 1, 1)
-				)
-				.invert();
-
-			const localPoint = worldPoint.clone().applyMatrix4(inverseMatrix);
-			const localXZ = new Vector2(localPoint.x, localPoint.z);
-
-			return [...prev, localXZ];
-		});
-	};
+	const [currentObstacleTransformMode, setCurrentObstacleTransformMode] = useState<"translate" | "scale">("translate");
 
 	const handleLocationSelect = (lat: number, lng: number) => {
 		const mapUrl = getGoogleMapImageUrl(lat, lng);
@@ -202,11 +124,99 @@ const App = () => {
 		setActiveObstacleId(newObstacle.id);
 	};
 
+	const handleDeleteObstacle = () => {
+		const updatedObstacles = obstacles.filter((obstacle) => obstacle.id !== activeObstacleId);
+		setObstacles(updatedObstacles);
+		setActiveObstacleId(updatedObstacles.length > 0 ? updatedObstacles[0].id : null);
+		const hiddenInputData: BuildingWithLocation = JSON.parse(hiddenBuildingsInput.value);
+		hiddenInputData.obstacles = updatedObstacles;
+		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
+	};
+
+	const handleBuildingClick = (e: ThreeEvent<PointerEvent>) => {
+		if (currentStep !== "defineLayout" || isDrawingClosed || drawingFinished || !currentBuildingData) return;
+
+		const worldPoint = new Vector3(e.point.x, 0, e.point.z);
+		const clickedXZ = new Vector2(worldPoint.x, worldPoint.z);
+
+		setDrawPoints((prev) => {
+			const threshold = 0.5;
+
+			// Check if click is near an existing point
+			const index = prev.findIndex((p) => {
+				// Convert local point to world space to compare with the clicked position
+				const localVec = new Vector3(p.x, 0, p.y);
+				const matrix = new Matrix4().compose(
+					new Vector3(...currentBuildingData.groupPosition),
+					new Quaternion().setFromEuler(new Euler(...currentBuildingData.groupRotation)),
+					new Vector3(1, 1, 1)
+				);
+				localVec.applyMatrix4(matrix);
+				return new Vector2(localVec.x, localVec.z).distanceTo(clickedXZ) < threshold;
+			});
+
+			// Closing shape logic
+			if (index !== -1) {
+				if (index === prev.length - 1 || index === prev.length - 2) {
+					setDrawingFinished(true);
+					return prev;
+				}
+
+				if (prev.length === 3 && index === 0) {
+					setClosingPointIndex(index);
+					setDrawingFinished(true);
+					return prev;
+				}
+
+				setIsDrawingClosed(true);
+				setClosingPointIndex(index);
+				setDrawingFinished(true);
+				return prev;
+			}
+
+			// 🔁 New logic: convert worldPoint to local space
+			const inverseMatrix = new Matrix4()
+				.compose(
+					new Vector3(...currentBuildingData.groupPosition),
+					new Quaternion().setFromEuler(new Euler(...currentBuildingData.groupRotation)),
+					new Vector3(1, 1, 1)
+				)
+				.invert();
+
+			const localPoint = worldPoint.clone().applyMatrix4(inverseMatrix);
+			const localXZ = new Vector2(localPoint.x, localPoint.z);
+
+			return [...prev, localXZ];
+		});
+	};
+
+	const drawingSegments = useMemo(() => {
+		if (drawPoints.length < 2) return [];
+
+		const segments: { from: Vector2; to: Vector2; length: number }[] = [];
+
+		for (let i = 1; i < drawPoints.length; i++) {
+			const from = drawPoints[i - 1];
+			const to = drawPoints[i];
+			segments.push({ from, to, length: Math.round(from.distanceTo(to)) });
+		}
+
+		// Add closing segment if shape is closed
+		if (
+			(isDrawingClosed && closingPointIndex !== null) ||
+			(!isDrawingClosed && closingPointIndex !== null && drawPoints.length === 3)
+		) {
+			const from = drawPoints.at(-1)!;
+			const to = drawPoints[closingPointIndex];
+			segments.push({ from, to, length: Math.round(from.distanceTo(to)) });
+		}
+
+		return segments;
+	}, [drawPoints, isDrawingClosed, closingPointIndex]);
+
 	const handleResetDrawing = () => {
 		setDrawingFinished(false);
 		setDrawPoints([]);
-		setObstacles([]);
-		setActiveObstacleId(null);
 		setIsDrawingClosed(false);
 		setClosingPointIndex(null);
 		loopInputs.forEach((input) => (input.checked = false));
@@ -215,7 +225,6 @@ const App = () => {
 		delete hiddenInputData["hasClosedLoopSystem"];
 		delete hiddenInputData["segments"];
 		delete hiddenInputData["closingPointIndex"];
-		delete hiddenInputData["obstacles"];
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
@@ -263,24 +272,6 @@ const App = () => {
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
-	const renderObstacles = () => {
-		if (!currentBuildingData || obstacles.length === 0) return null;
-
-		return obstacles.map((obstacle) => (
-			<RooftopObstacle
-				key={obstacle.id}
-				obstacle={obstacle}
-				buildingWidth={currentBuildingData.buildingWidth}
-				buildingLength={currentBuildingData.buildingLength}
-				buildingHeight={currentBuildingData.buildingHeight}
-				isActive={obstacle.id === activeObstacleId}
-				transformMode={currentTransformMode}
-				onClick={() => setActiveObstacleId(obstacle.id)}
-				onUpdate={(updated) => setObstacles((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))}
-			/>
-		));
-	};
-
 	useEffect(() => {
 		if (buildingsData && Object.keys(buildingsData).length > 0) {
 			// Do something if buildingsData is a non-empty object
@@ -296,7 +287,6 @@ const App = () => {
 			// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(initialBuildingData);
 			if ("hasClosedLoopSystem" in initialBuildingData && "segments" in initialBuildingData) {
 				// we have segments and a closed loop system
-				setEnableDrawing(true);
 				setDrawingFinished(true);
 				setIsDrawingClosed(initialBuildingData.hasClosedLoopSystem!);
 				setClosingPointIndex(initialBuildingData.closingPointIndex!);
@@ -309,6 +299,7 @@ const App = () => {
 				}
 
 				setDrawPoints(restoredPoints);
+				setCurrentStep("defineLayout");
 			}
 			if ("obstacles" in initialBuildingData) {
 				if (initialBuildingData.obstacles!.length > 0) {
@@ -334,6 +325,25 @@ const App = () => {
 		}
 	}, [handleAddBuilding, currentlySelectedLocation, buildingAdded]);
 
+	const renderObstacles = () => {
+		if (!currentBuildingData || obstacles.length === 0) return null;
+
+		return obstacles.map((obstacle) => (
+			<RooftopObstacle
+				key={obstacle.id}
+				obstacle={obstacle}
+				buildingWidth={currentBuildingData.buildingWidth}
+				buildingLength={currentBuildingData.buildingLength}
+				buildingHeight={currentBuildingData.buildingHeight}
+				isActive={obstacle.id === activeObstacleId}
+				enableTransformMode={currentStep === "defineRestrictions"}
+				transformMode={currentObstacleTransformMode}
+				onClick={() => setActiveObstacleId(obstacle.id)}
+				onUpdate={(updated) => setObstacles((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))}
+			/>
+		));
+	};
+
 	return (
 		<div className="app-container">
 			{/* <input type="hidden" name="buildings" value={""} /> */}
@@ -357,7 +367,7 @@ const App = () => {
 								transformTarget={currentTransformTarget}
 								transformMode={currentTransformMode}
 								buildingProps={currentBuildingData}
-								disableTransform={enableDrawing}
+								disableTransform={currentStep !== "defineBuilding"}
 								onTransformUpdate={(updated) => {
 									setCurrentBuildingData(updated);
 									updated.location = currentlySelectedLocation;
@@ -375,7 +385,7 @@ const App = () => {
 								index={index}
 								initial={point}
 								y={currentBuildingData!.buildingHeight + 0.01}
-								enabled={enableDrawing && drawingFinished}
+								enabled={currentStep === "defineLayout" && drawingFinished}
 								isActive={index === activePointIndex}
 								onClick={() => setActivePointIndex(index)}
 								onUpdate={(idx, newPos) => {
@@ -408,174 +418,221 @@ const App = () => {
 				</div>
 			</div>
 			<div className="action-container">
-				<h3>Define a building type</h3>
-				<div className="options-container">
-					{availableBuildingTypes.includes("flat") && (
-						<div>
-							<label htmlFor="flat">Flat Roof</label>
-							<input
-								type="radio"
-								name="building"
-								id="flat"
-								value={"flat"}
-								checked={currentBuildingType === "flat"}
-								onChange={handleBuildingTypeChange}
-							/>
-						</div>
-					)}
-					{availableBuildingTypes.includes("saddle") && (
-						<div>
-							<label htmlFor="saddle">Saddle Roof</label>
-							<input
-								type="radio"
-								name="building"
-								id="saddle"
-								value={"saddle"}
-								checked={currentBuildingType === "saddle"}
-								onChange={handleBuildingTypeChange}
-							/>
-						</div>
-					)}
-					{availableBuildingTypes.includes("hipped") && (
-						<div>
-							<label htmlFor="hipped">Hipped Roof</label>
-							<input
-								type="radio"
-								name="building"
-								id="hipped"
-								value={"hipped"}
-								checked={currentBuildingType === "hipped"}
-								onChange={handleBuildingTypeChange}
-							/>
-						</div>
-					)}
+				<h3>Select current step</h3>
+				<div className="btn-container">
+					<button className="btn" onClick={() => setCurrentStep("defineBuilding")}>
+						Define building
+					</button>
+					<button className="btn" onClick={() => setCurrentStep("defineRestrictions")} disabled={!buildingAdded}>
+						Define restrictions
+					</button>
+					<button className="btn" onClick={() => setCurrentStep("defineLayout")} disabled={!buildingAdded}>
+						Define layout
+					</button>
 				</div>
-				{currentBuildingType && (
-					<div className="btn-container">
-						<button className="btn" onClick={() => handleAddBuilding(currentBuildingType!, currentlySelectedLocation!)}>
-							+ Add new building
-						</button>
-					</div>
-				)}
-				{currentBuildingType && buildingAdded && (
+				{currentStep === "defineBuilding" && (
 					<>
-						<h3>Current transform target: {currentTransformTarget}</h3>
+						<h3>Define a building type</h3>
 						<div className="options-container">
-							<div>
-								<label htmlFor="group">Focus group</label>
-								<input
-									type="radio"
-									name="focus-target"
-									id="group"
-									value={"group"}
-									checked={currentTransformTarget === "group"}
-									onChange={() => handleChangeTransformTarget("group")}
-								/>
-							</div>
-							{currentBuildingType !== "flat" && (
+							{availableBuildingTypes.includes("flat") && (
 								<div>
-									<label htmlFor="roof">Focus roof</label>
+									<label htmlFor="flat">Flat Roof</label>
 									<input
 										type="radio"
-										name="focus-target"
-										id="roof"
-										value={"roof"}
-										checked={currentTransformTarget === "roof"}
-										onChange={() => handleChangeTransformTarget("roof")}
+										name="building"
+										id="flat"
+										value={"flat"}
+										checked={currentBuildingType === "flat"}
+										onChange={handleBuildingTypeChange}
 									/>
 								</div>
 							)}
-							<div>
-								<label htmlFor="building">Focus building</label>
-								<input
-									type="radio"
-									name="focus-target"
-									id="building"
-									value={"building"}
-									checked={currentTransformTarget === "building"}
-									onChange={() => handleChangeTransformTarget("building")}
-								/>
-							</div>
+							{availableBuildingTypes.includes("saddle") && (
+								<div>
+									<label htmlFor="saddle">Saddle Roof</label>
+									<input
+										type="radio"
+										name="building"
+										id="saddle"
+										value={"saddle"}
+										checked={currentBuildingType === "saddle"}
+										onChange={handleBuildingTypeChange}
+									/>
+								</div>
+							)}
+							{availableBuildingTypes.includes("hipped") && (
+								<div>
+									<label htmlFor="hipped">Hipped Roof</label>
+									<input
+										type="radio"
+										name="building"
+										id="hipped"
+										value={"hipped"}
+										checked={currentBuildingType === "hipped"}
+										onChange={handleBuildingTypeChange}
+									/>
+								</div>
+							)}
 						</div>
+						{currentBuildingType && (
+							<div className="btn-container">
+								<button
+									className="btn"
+									onClick={() => handleAddBuilding(currentBuildingType!, currentlySelectedLocation!)}
+								>
+									+ Add new building
+								</button>
+							</div>
+						)}
+						{currentBuildingType && buildingAdded && (
+							<>
+								<h3>Current transform target: {currentTransformTarget}</h3>
+								<div className="options-container">
+									<div>
+										<label htmlFor="group">Focus group</label>
+										<input
+											type="radio"
+											name="focus-target"
+											id="group"
+											value={"group"}
+											checked={currentTransformTarget === "group"}
+											onChange={() => handleChangeTransformTarget("group")}
+										/>
+									</div>
+									{currentBuildingType !== "flat" && (
+										<div>
+											<label htmlFor="roof">Focus roof</label>
+											<input
+												type="radio"
+												name="focus-target"
+												id="roof"
+												value={"roof"}
+												checked={currentTransformTarget === "roof"}
+												onChange={() => handleChangeTransformTarget("roof")}
+											/>
+										</div>
+									)}
+									<div>
+										<label htmlFor="building">Focus building</label>
+										<input
+											type="radio"
+											name="focus-target"
+											id="building"
+											value={"building"}
+											checked={currentTransformTarget === "building"}
+											onChange={() => handleChangeTransformTarget("building")}
+										/>
+									</div>
+								</div>
+							</>
+						)}
+						{currentBuildingType && buildingAdded && (
+							<>
+								<h3>Current mode: {currentTransformMode}</h3>
+								<div className="options-container">
+									{currentTransformTarget === "group" && (
+										<div>
+											<label htmlFor="translate">Translate</label>
+											<input
+												type="radio"
+												name="translate-mode"
+												id="translate"
+												value={"translate"}
+												checked={currentTransformMode === "translate"}
+												onChange={() => setCurrentTransformMode("translate")}
+											/>
+										</div>
+									)}
+									{currentTransformTarget !== "group" && (
+										<div>
+											<label htmlFor="scale">Scale</label>
+											<input
+												type="radio"
+												name="translate-mode"
+												id="scale"
+												value={"scale"}
+												checked={currentTransformMode === "scale"}
+												onChange={() => setCurrentTransformMode("scale")}
+											/>
+										</div>
+									)}
+									{currentTransformTarget === "group" && (
+										<div>
+											<label htmlFor="rotate">Rotate</label>
+											<input
+												type="radio"
+												name="translate-mode"
+												id="rotate"
+												value={"rotate"}
+												checked={currentTransformMode === "rotate"}
+												onChange={() => setCurrentTransformMode("rotate")}
+											/>
+										</div>
+									)}
+								</div>
+							</>
+						)}
+						{buildingAdded && currentBuildingData && (
+							<BuildingInputs
+								currentLocation={currentlySelectedLocation!}
+								currentBuildingType={currentBuildingType!}
+								buildingProps={currentBuildingData}
+								disableInputs={false}
+								onChangeBuildingState={handleBuildingInputChange}
+							/>
+						)}
 					</>
 				)}
-				{currentBuildingType && buildingAdded && (
+				{currentStep === "defineRestrictions" && buildingAdded && (
 					<>
-						<h3>Current mode: {currentTransformMode}</h3>
-						<div className="options-container">
-							{(currentBuildingType === "flat" || currentTransformTarget === "group") && (
+						<h3>Define restrictions</h3>
+						<div className="btn-container">
+							<button className="btn" onClick={handlePlaceObstacle}>
+								+ Add Roof Object
+							</button>
+							{activeObstacleId && (
+								<button className="btn" onClick={handleDeleteObstacle}>
+									Delete obstacle
+								</button>
+							)}
+						</div>
+						{obstacles.length > 0 && activeObstacleId && (
+							<div className="options-container">
 								<div>
-									<label htmlFor="translate">Translate</label>
+									<label htmlFor="translate">Move</label>
 									<input
 										type="radio"
 										name="translate-mode"
 										id="translate"
 										value={"translate"}
-										checked={currentTransformMode === "translate"}
-										onChange={() => setCurrentTransformMode("translate")}
+										checked={currentObstacleTransformMode === "translate"}
+										onChange={() => setCurrentObstacleTransformMode("translate")}
 									/>
 								</div>
-							)}
-							<div>
-								<label htmlFor="scale">Scale</label>
-								<input
-									type="radio"
-									name="translate-mode"
-									id="scale"
-									value={"scale"}
-									checked={currentTransformMode === "scale"}
-									onChange={() => setCurrentTransformMode("scale")}
-								/>
-							</div>
-							{(currentBuildingType === "flat" || currentTransformTarget === "group") && (
 								<div>
-									<label htmlFor="rotate">Rotate</label>
+									<label htmlFor="scale">Scale</label>
 									<input
 										type="radio"
 										name="translate-mode"
-										id="rotate"
-										value={"rotate"}
-										checked={currentTransformMode === "rotate"}
-										onChange={() => setCurrentTransformMode("rotate")}
+										id="scale"
+										value={"scale"}
+										checked={currentObstacleTransformMode === "scale"}
+										onChange={() => setCurrentObstacleTransformMode("scale")}
 									/>
 								</div>
-							)}
-						</div>
+							</div>
+						)}
 					</>
 				)}
-				{buildingAdded && currentBuildingData && (
-					<BuildingInputs
-						currentLocation={currentlySelectedLocation!}
-						currentBuildingType={currentBuildingType!}
-						buildingProps={currentBuildingData}
-						disableInputs={enableDrawing}
-						onChangeBuildingState={handleBuildingInputChange}
-					/>
-				)}
-				{buildingAdded && (
-					<>
-						<div className="btn-container">
-							<button className="btn" onClick={handlePlaceObstacle} disabled={enableDrawing}>
-								+ Add Roof Obstacle
-							</button>
-						</div>
-						<h3>Drawing mode {`${enableDrawing ? "enabled" : "disabled"}`}</h3>
-						<div className="btn-container">
-							<button className="btn" onClick={() => setEnableDrawing((prev) => !prev)}>
-								Toggle Draw Mode
-							</button>
-						</div>
-					</>
-				)}
-				{drawPoints.length > 0 && buildingAdded && enableDrawing && (
+				{currentStep === "defineLayout" && buildingAdded && (
 					<>
 						<h3>Draw actions</h3>
 						<div className="btn-container">
-							<button className="btn" onClick={handleResetDrawing}>
+							<button className="btn" onClick={handleResetDrawing} disabled={drawPoints.length === 0}>
 								Reset Drawing
 							</button>
-							{drawingFinished && drawPoints.length > 1 && (
-								<button className="btn" onClick={handleLoadFromDrawing}>
+							{drawingFinished && (
+								<button className="btn" onClick={handleLoadFromDrawing} disabled={drawPoints.length < 2}>
 									Load from drawing
 								</button>
 							)}
