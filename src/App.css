@@ -38,6 +38,24 @@
 	align-items: center;
 }
 
+.segment-editor {
+	display: flex;
+	flex-direction: column;
+}
+
+.segment-editor label {
+	font-size: 18px;
+	font-weight: bold;
+	margin: 1rem 0;
+	padding-left: 0;
+}
+
+.segment-editor input,
+.segment-editor button {
+	width: 35%;
+	margin-bottom: 1rem;
+}
+
 .options-container input[type="radio"] {
 	margin: 0;
 }
@@ -79,12 +97,14 @@ input {
 	transition: background-color 0.3s ease;
 }
 
-.btn-container .btn:hover {
+.btn-container .btn:hover,
+.segment-editor .btn:hover {
 	background-color: #7c98aa;
 	color: white;
 }
 
-.btn-container .btn:focus {
+.btn-container .btn:focus,
+.segment-editor .btn:focus {
 	color: white;
 }
 
@@ -99,7 +119,14 @@ input {
 	cursor: not-allowed;
 }
 
-@media (max-width: 1210px) {
+@media (max-width: 1750px) {
+	.control-panel {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+@media (max-width: 1280px) {
 	.action-container h3 {
 		text-align: left;
 	}

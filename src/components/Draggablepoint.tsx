@@ -12,6 +12,7 @@ type Props = {
 	onClick: () => void;
 	onUpdate: (index: number, newPos: THREE.Vector2) => void;
 	buildingData: BoqBuilding;
+	currentStep: "defineBuilding" | "defineRestrictions" | "defineLayout";
 };
 
 export default function DraggablePoint({
@@ -23,6 +24,7 @@ export default function DraggablePoint({
 	onClick,
 	onUpdate,
 	buildingData,
+	currentStep,
 }: Props) {
 	const meshRef = useRef<THREE.Mesh>(null);
 	const [position, setPosition] = useState<THREE.Vector3>(new THREE.Vector3(initial.x, y, initial.y));
@@ -79,14 +81,17 @@ export default function DraggablePoint({
 				position={position}
 				rotation={[-Math.PI / 2, 0, 0]}
 				onPointerOver={(e) => {
+					if (currentStep !== "defineLayout") return;
 					e.stopPropagation();
 					setHovered(true);
 				}}
 				onPointerOut={(e) => {
+					if (currentStep !== "defineLayout") return;
 					e.stopPropagation();
 					setHovered(false);
 				}}
 				onClick={(e) => {
+					if (currentStep !== "defineLayout") return;
 					e.stopPropagation();
 					onClick();
 				}}

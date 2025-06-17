@@ -1,4 +1,4 @@
-import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from "three";
+import { Euler, MathUtils, Matrix4, Quaternion, Vector2, Vector3 } from "three";
 import { Canvas, ThreeEvent } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -41,14 +41,17 @@ const App = () => {
 	const [currentTransformMode, setCurrentTransformMode] = useState<"translate" | "scale" | "rotate">("translate");
 	const [buildingAdded, setBuildingAdded] = useState(false);
 	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
+	const [obstacles, setObstacles] = useState<RooftopObstacleType[]>([]);
+	const [activeObstacleId, setActiveObstacleId] = useState<string | null>(null);
+	const [currentObstacleTransformMode, setCurrentObstacleTransformMode] = useState<"translate" | "scale">("translate");
 	const [drawingFinished, setDrawingFinished] = useState(false);
 	const [drawPoints, setDrawPoints] = useState<Vector2[]>([]);
 	const [isDrawingClosed, setIsDrawingClosed] = useState(false);
 	const [closingPointIndex, setClosingPointIndex] = useState<number | null>(null);
 	const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
-	const [obstacles, setObstacles] = useState<RooftopObstacleType[]>([]);
-	const [activeObstacleId, setActiveObstacleId] = useState<string | null>(null);
-	const [currentObstacleTransformMode, setCurrentObstacleTransformMode] = useState<"translate" | "scale">("translate");
+	const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null);
+	const [segmentInputLength, setSegmentInputLength] = useState<number | null>(null);
+	const [hoveredSegmentIndex, setHoveredSegmentIndex] = useState<number | null>(null);
 
 	const handleLocationSelect = (lat: number, lng: number) => {
 		const mapUrl = getGoogleMapImageUrl(lat, lng);
@@ -186,6 +189,14 @@ const App = () => {
 			const localPoint = worldPoint.clone().applyMatrix4(inverseMatrix);
 			const localXZ = new Vector2(localPoint.x, localPoint.z);
 
+			// Clamp point within building bounds + visual buffer
+			const halfW = currentBuildingData.buildingWidth / 2;
+			const halfL = currentBuildingData.buildingLength / 2;
+			const radius = 0.15;
+
+			localXZ.x = MathUtils.clamp(localXZ.x, -halfW + radius, halfW - radius);
+			localXZ.y = MathUtils.clamp(localXZ.y, -halfL + radius, halfL - radius);
+
 			return [...prev, localXZ];
 		});
 	};
@@ -219,6 +230,8 @@ const App = () => {
 		setDrawPoints([]);
 		setIsDrawingClosed(false);
 		setClosingPointIndex(null);
+		setSelectedSegmentIndex(null);
+		setSegmentInputLength(null);
 		loopInputs.forEach((input) => (input.checked = false));
 		segmentInputContainer.innerHTML = "";
 		const hiddenInputData: BuildingWithLocation = JSON.parse(hiddenBuildingsInput.value);
@@ -226,6 +239,117 @@ const App = () => {
 		delete hiddenInputData["segments"];
 		delete hiddenInputData["closingPointIndex"];
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
+	};
+
+	const handleDragabblePointUpdated = (idx: number, newPos: Vector2) => {
+		const updated = [...drawPoints];
+		updated[idx] = newPos;
+		setDrawPoints(updated);
+
+		if (selectedSegmentIndex !== null) {
+			const from = updated[selectedSegmentIndex];
+			const to =
+				selectedSegmentIndex === updated.length - 1 && isDrawingClosed ? updated[0] : updated[selectedSegmentIndex + 1];
+
+			if (from && to && (idx === selectedSegmentIndex || idx === selectedSegmentIndex + 1)) {
+				const newLength = from.distanceTo(to);
+				setSegmentInputLength(Math.round(newLength));
+			}
+		}
+	};
+
+	const adjustSegmentLength = (index: number, newLength: number) => {
+		const updatedPoints = [...drawPoints];
+
+		const from = updatedPoints[index];
+
+		let to: Vector2 | undefined;
+
+		if (index < updatedPoints.length - 1) {
+			to = updatedPoints[index + 1];
+		} else if (isDrawingClosed && closingPointIndex !== null) {
+			to = updatedPoints[closingPointIndex];
+		} else {
+			to = updatedPoints[0]; // fallback for special closing case
+		}
+
+		const dx = to.x - from.x;
+		const dy = to.y - from.y;
+		const originalLength = Math.sqrt(dx * dx + dy * dy);
+		if (originalLength === 0) return;
+
+		const direction = new Vector2(dx, dy).normalize();
+
+		// ✅ Clamp to building bounds
+		const maxLength = getMaxLengthInsideBuilding(
+			from,
+			direction,
+			currentBuildingData!.buildingWidth,
+			currentBuildingData!.buildingLength
+		);
+
+		const clampedLength = Math.min(newLength, maxLength);
+
+		const scale = clampedLength / originalLength;
+		const newTo = new Vector2(from.x + dx * scale, from.y + dy * scale);
+
+		if (index < updatedPoints.length - 1) {
+			updatedPoints[index + 1] = newTo;
+		} else {
+			updatedPoints[0] = newTo;
+		}
+
+		setDrawPoints(updatedPoints);
+	};
+
+	const getMaxLengthInsideBuilding = (
+		from: Vector2,
+		direction: Vector2,
+		buildingWidth: number,
+		buildingLength: number,
+		buffer = 0
+	): number => {
+		let maxLength = Infinity;
+
+		const halfWidth = buildingWidth / 2;
+		const halfLength = buildingLength / 2;
+
+		if (direction.x > 0) {
+			maxLength = Math.min(maxLength, (halfWidth - from.x - buffer) / direction.x);
+		} else if (direction.x < 0) {
+			maxLength = Math.min(maxLength, (-halfWidth - from.x + buffer) / direction.x);
+		}
+
+		if (direction.y > 0) {
+			maxLength = Math.min(maxLength, (halfLength - from.y - buffer) / direction.y);
+		} else if (direction.y < 0) {
+			maxLength = Math.min(maxLength, (-halfLength - from.y + buffer) / direction.y);
+		}
+
+		return Math.max(0, maxLength);
+	};
+
+	const getMaxSegmentLength = () => {
+		const segment = drawingSegments[selectedSegmentIndex!];
+		const from = segment.from;
+		const to = segment.to;
+		const direction = to.clone().sub(from).normalize();
+
+		return getMaxLengthInsideBuilding(
+			from,
+			direction,
+			currentBuildingData!.buildingWidth,
+			currentBuildingData!.buildingLength,
+			0.15
+		).toFixed(2);
+	};
+
+	const handleUpdateSegmentLength = () => {
+		if (segmentInputLength && drawPoints.length >= 2 && segmentInputLength >= 1 && currentBuildingData) {
+			const clampedLength = Math.min(segmentInputLength, +getMaxSegmentLength());
+			adjustSegmentLength(selectedSegmentIndex!, clampedLength);
+			setSegmentInputLength(Math.round(clampedLength));
+		}
 	};
 
 	const handleLoadFromDrawing = () => {
@@ -384,50 +508,61 @@ const App = () => {
 								key={index}
 								index={index}
 								initial={point}
-								y={currentBuildingData!.buildingHeight + 0.01}
+								y={currentBuildingData!.buildingHeight + 0.03}
 								enabled={currentStep === "defineLayout" && drawingFinished}
 								isActive={index === activePointIndex}
 								onClick={() => setActivePointIndex(index)}
-								onUpdate={(idx, newPos) => {
-									const updated = [...drawPoints];
-									updated[idx] = newPos;
-									setDrawPoints(updated);
-								}}
+								onUpdate={handleDragabblePointUpdated}
 								buildingData={currentBuildingData!}
+								currentStep={currentStep}
 							/>
 						))}
-						{drawPoints.length >= 2 && (
-							<Line points={getTransformedPoints(drawPoints, currentBuildingData!)} color="yellow" lineWidth={5} />
-						)}
-						{isDrawingClosed && closingPointIndex !== null && drawPoints.length > 1 && (
-							<Line
-								points={getTransformedPoints([drawPoints.at(-1)!, drawPoints[closingPointIndex]], currentBuildingData!)}
-								color="yellow"
-								lineWidth={5}
-							/>
-						)}
-						{!isDrawingClosed && closingPointIndex !== null && drawPoints.length === 3 && drawingFinished && (
-							<Line
-								points={getTransformedPoints([drawPoints.at(-1)!, drawPoints[closingPointIndex]], currentBuildingData!)}
-								color="yellow"
-								lineWidth={5}
-							/>
-						)}
+						{drawingSegments.map((segment, index) => {
+							const [from, to] = getTransformedPoints([segment.from, segment.to], currentBuildingData!);
+
+							const isHovered = hoveredSegmentIndex === index;
+							const isSelected = selectedSegmentIndex === index;
+
+							return (
+								<Line
+									key={index}
+									points={[...from, ...to]}
+									color={isSelected ? "orange" : isHovered ? "orange" : "yellow"}
+									lineWidth={isHovered ? 15 : 5}
+									onPointerOver={(e) => {
+										if (currentStep !== "defineLayout") return;
+										e.stopPropagation();
+										setHoveredSegmentIndex(index);
+									}}
+									onPointerOut={(e) => {
+										if (currentStep !== "defineLayout") return;
+										e.stopPropagation();
+										setHoveredSegmentIndex(null);
+									}}
+									onClick={(e) => {
+										if (currentStep !== "defineLayout") return;
+										e.stopPropagation();
+										setSelectedSegmentIndex(index);
+										setSegmentInputLength(segment.length);
+									}}
+								/>
+							);
+						})}
 						<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
 					</Canvas>
 				</div>
 			</div>
 			<div className="action-container">
 				<h3>Select current step</h3>
-				<div className="btn-container">
+				<div className="btn-container control-panel">
 					<button className="btn" onClick={() => setCurrentStep("defineBuilding")}>
 						Define building
 					</button>
 					<button className="btn" onClick={() => setCurrentStep("defineRestrictions")} disabled={!buildingAdded}>
-						Define restrictions
+						Roof Objects
 					</button>
 					<button className="btn" onClick={() => setCurrentStep("defineLayout")} disabled={!buildingAdded}>
-						Define layout
+						Drawing
 					</button>
 				</div>
 				{currentStep === "defineBuilding" && (
@@ -637,6 +772,22 @@ const App = () => {
 								</button>
 							)}
 						</div>
+						{selectedSegmentIndex !== null && currentBuildingData && (
+							<div className="segment-editor">
+								<label htmlFor="segment-length">Segment length:</label>
+								<input
+									id="segment-length"
+									type="number"
+									min={1}
+									max={getMaxSegmentLength()}
+									value={segmentInputLength ?? ""}
+									onChange={(e) => setSegmentInputLength(parseFloat(e.target.value))}
+								/>
+								<button className="btn" onClick={handleUpdateSegmentLength}>
+									Update length
+								</button>
+							</div>
+						)}
 					</>
 				)}
 			</div>
