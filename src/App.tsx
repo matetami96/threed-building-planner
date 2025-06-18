@@ -396,6 +396,25 @@ const App = () => {
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
+	const handleTransformUpdate = useCallback(
+		(updated: BuildingWithLocation) => {
+			if (
+				JSON.stringify(updated.groupPosition) !== JSON.stringify(currentBuildingData?.groupPosition) ||
+				JSON.stringify(updated.groupRotation) !== JSON.stringify(currentBuildingData?.groupRotation) ||
+				JSON.stringify(updated.buildingPosition) !== JSON.stringify(currentBuildingData?.buildingPosition) ||
+				JSON.stringify(updated.buildingRotation) !== JSON.stringify(currentBuildingData?.buildingRotation) ||
+				updated.buildingWidth !== currentBuildingData?.buildingWidth ||
+				updated.buildingHeight !== currentBuildingData?.buildingHeight ||
+				updated.buildingLength !== currentBuildingData?.buildingLength
+			) {
+				setCurrentBuildingData(updated);
+				updated.location = currentlySelectedLocation;
+				hiddenBuildingsInput.value = JSON.stringify(updated);
+			}
+		},
+		[currentBuildingData, currentlySelectedLocation]
+	);
+
 	useEffect(() => {
 		if (buildingsData && Object.keys(buildingsData).length > 0) {
 			// Do something if buildingsData is a non-empty object
@@ -492,12 +511,7 @@ const App = () => {
 								transformMode={currentTransformMode}
 								buildingProps={currentBuildingData}
 								disableTransform={currentStep !== "defineBuilding"}
-								onTransformUpdate={(updated) => {
-									setCurrentBuildingData(updated);
-									updated.location = currentlySelectedLocation;
-									hiddenBuildingsInput.value = JSON.stringify(updated);
-									// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(updated);
-								}}
+								onTransformUpdate={handleTransformUpdate}
 								onBuildingClick={handleBuildingClick}
 							>
 								{renderObstacles()}

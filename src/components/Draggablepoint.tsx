@@ -100,9 +100,9 @@ export default function DraggablePoint({
 				<meshStandardMaterial color={color} />
 			</mesh>
 
-			{enabled && isActive && (
+			{enabled && isActive && meshRef.current && (
 				<TransformControls
-					object={meshRef.current!}
+					object={meshRef.current}
 					mode="translate"
 					showY={false}
 					showX={true}
