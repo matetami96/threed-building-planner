@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 import "./App.css";
-import { BoqBuilding, BuildingWithLocation, RooftopObstacleType } from "./types";
+import { BoqBuilding, RooftopObjectType } from "./types";
 import BoqBuildingFlat from "./models/BoqBuildingFlat";
 import BoqBuildingSaddle from "./models/BoqBuildingSaddle";
 import BoqBuildingHipped from "./models/BoqBuildingHipped";
@@ -16,8 +16,9 @@ import SearchBar from "./components/SearchBar";
 import BoqBuildingRenderer from "./components/BoqBuildingRenderer";
 import BuildingInputs from "./components/BuildingInputs";
 import DraggablePoint from "./components/Draggablepoint";
-import { getTransformedPoints } from "./utils/utils";
-import RooftopObstacle from "./components/RooftopObstacle";
+import { adjustSegmentLength, getMaxSegmentLength, getTransformedPoints } from "./utils/utils";
+import RooftopObject from "./components/RooftopObject";
+import RoofObjectEditor from "./components/RoofObjectEditor";
 
 const START_LOCATION = { lat: 45.8664544, lng: 25.7981645 };
 const hiddenBuildingsInput = document.querySelector<HTMLInputElement>("[name='buildings']")!;
@@ -26,7 +27,7 @@ const loopInputs = document.querySelectorAll<HTMLInputElement>("[name='BoqGuardR
 // const availableBuildingTypes = ["flat", "saddle", "hipped"];
 // const buildingsData = {};
 declare const availableBuildingTypes: string[];
-declare const buildingsData: BuildingWithLocation | object;
+declare const buildingsData: BoqBuilding | object;
 
 const App = () => {
 	const [currentStep, setCurrentStep] = useState<"defineBuilding" | "defineRestrictions" | "defineLayout">(
@@ -41,9 +42,8 @@ const App = () => {
 	const [currentTransformMode, setCurrentTransformMode] = useState<"translate" | "scale" | "rotate">("translate");
 	const [buildingAdded, setBuildingAdded] = useState(false);
 	const [currentBuildingData, setCurrentBuildingData] = useState<BoqBuilding | null>(null);
-	const [obstacles, setObstacles] = useState<RooftopObstacleType[]>([]);
-	const [activeObstacleId, setActiveObstacleId] = useState<string | null>(null);
-	const [currentObstacleTransformMode, setCurrentObstacleTransformMode] = useState<"translate" | "scale">("translate");
+	const [roofObjects, setRoofObjects] = useState<RooftopObjectType[]>([]);
+	const [activeRoofObjectId, setActiveRoofObjectId] = useState<string | null>(null);
 	const [drawingFinished, setDrawingFinished] = useState(false);
 	const [drawPoints, setDrawPoints] = useState<Vector2[]>([]);
 	const [isDrawingClosed, setIsDrawingClosed] = useState(false);
@@ -65,7 +65,7 @@ const App = () => {
 
 	const handleAddBuilding = useCallback(
 		(_currentBuildingType: "flat" | "saddle" | "hipped", location: { lat: number; lng: number }) => {
-			let building: BuildingWithLocation | null = null;
+			let building: BoqBuilding | null = null;
 
 			switch (_currentBuildingType) {
 				case "flat":
@@ -112,27 +112,63 @@ const App = () => {
 
 	const handleBuildingInputChange = (key: string, value: number | number[]) => {
 		setCurrentBuildingData((prev) => prev && { ...prev, [key]: value });
+		if (key === "buildingHeight") {
+			const newHeight = value as number;
+
+			// Recalculate Y position for all roofObjects
+			setRoofObjects((prev) =>
+				prev.map((obj) => ({
+					...obj,
+					position: [obj.position[0], newHeight + obj.scale[1] / 2, obj.position[2]],
+				}))
+			);
+		}
 		const updatedBuildingData = { ...currentBuildingData, [key]: value };
 		hiddenBuildingsInput.value = JSON.stringify(updatedBuildingData);
 		// document.querySelector<HTMLInputElement>("[name='buildings']")!.value = JSON.stringify(updatedBuildingData);
 	};
 
-	const handlePlaceObstacle = () => {
-		const newObstacle: RooftopObstacleType = {
+	const handleTransformUpdate = useCallback(
+		(updated: BoqBuilding) => {
+			if (
+				JSON.stringify(updated.groupPosition) !== JSON.stringify(currentBuildingData?.groupPosition) ||
+				JSON.stringify(updated.groupRotation) !== JSON.stringify(currentBuildingData?.groupRotation) ||
+				JSON.stringify(updated.buildingPosition) !== JSON.stringify(currentBuildingData?.buildingPosition) ||
+				JSON.stringify(updated.buildingRotation) !== JSON.stringify(currentBuildingData?.buildingRotation) ||
+				updated.buildingWidth !== currentBuildingData?.buildingWidth ||
+				updated.buildingHeight !== currentBuildingData?.buildingHeight ||
+				updated.buildingLength !== currentBuildingData?.buildingLength
+			) {
+				setCurrentBuildingData(updated);
+				setRoofObjects((prev) =>
+					prev.map((obj) => ({
+						...obj,
+						position: [obj.position[0], updated.buildingHeight + obj.scale[1] / 2, obj.position[2]],
+					}))
+				);
+				updated.location = currentlySelectedLocation;
+				hiddenBuildingsInput.value = JSON.stringify(updated);
+			}
+		},
+		[currentBuildingData, currentlySelectedLocation]
+	);
+
+	const handlePlaceRoofObject = () => {
+		const newRoofObject: RooftopObjectType = {
 			id: uuidv4(),
-			position: [0, currentBuildingData!.buildingHeight / 2, 0],
+			position: [0, currentBuildingData!.buildingHeight + 0.5 / 2, 0],
 			scale: [1, 0.5, 1],
 		};
-		setObstacles((prev) => [...prev, newObstacle]);
-		setActiveObstacleId(newObstacle.id);
+		setRoofObjects((prev) => [...prev, newRoofObject]);
+		setActiveRoofObjectId(newRoofObject.id);
 	};
 
-	const handleDeleteObstacle = () => {
-		const updatedObstacles = obstacles.filter((obstacle) => obstacle.id !== activeObstacleId);
-		setObstacles(updatedObstacles);
-		setActiveObstacleId(updatedObstacles.length > 0 ? updatedObstacles[0].id : null);
-		const hiddenInputData: BuildingWithLocation = JSON.parse(hiddenBuildingsInput.value);
-		hiddenInputData.obstacles = updatedObstacles;
+	const handleDeleteRoofObject = () => {
+		const updatedRoofObjects = roofObjects.filter((obj) => obj.id !== activeRoofObjectId);
+		setRoofObjects(updatedRoofObjects);
+		setActiveRoofObjectId(updatedRoofObjects.length > 0 ? updatedRoofObjects[0].id : null);
+		const hiddenInputData: BoqBuilding = JSON.parse(hiddenBuildingsInput.value);
+		hiddenInputData.roofObjects = updatedRoofObjects;
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
 
@@ -201,7 +237,23 @@ const App = () => {
 		});
 	};
 
-	const drawingSegments = useMemo(() => {
+	const handleResetDrawing = () => {
+		setDrawingFinished(false);
+		setDrawPoints([]);
+		setIsDrawingClosed(false);
+		setClosingPointIndex(null);
+		setSelectedSegmentIndex(null);
+		setSegmentInputLength(null);
+		loopInputs.forEach((input) => (input.checked = false));
+		segmentInputContainer.innerHTML = "";
+		const hiddenInputData: BoqBuilding = JSON.parse(hiddenBuildingsInput.value);
+		delete hiddenInputData["hasClosedLoopSystem"];
+		delete hiddenInputData["segments"];
+		delete hiddenInputData["closingPointIndex"];
+		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
+	};
+
+	const drawnSegments = useMemo(() => {
 		if (drawPoints.length < 2) return [];
 
 		const segments: { from: Vector2; to: Vector2; length: number }[] = [];
@@ -225,22 +277,6 @@ const App = () => {
 		return segments;
 	}, [drawPoints, isDrawingClosed, closingPointIndex]);
 
-	const handleResetDrawing = () => {
-		setDrawingFinished(false);
-		setDrawPoints([]);
-		setIsDrawingClosed(false);
-		setClosingPointIndex(null);
-		setSelectedSegmentIndex(null);
-		setSegmentInputLength(null);
-		loopInputs.forEach((input) => (input.checked = false));
-		segmentInputContainer.innerHTML = "";
-		const hiddenInputData: BuildingWithLocation = JSON.parse(hiddenBuildingsInput.value);
-		delete hiddenInputData["hasClosedLoopSystem"];
-		delete hiddenInputData["segments"];
-		delete hiddenInputData["closingPointIndex"];
-		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
-	};
-
 	const handleDragabblePointUpdated = (idx: number, newPos: Vector2) => {
 		const updated = [...drawPoints];
 		updated[idx] = newPos;
@@ -258,96 +294,26 @@ const App = () => {
 		}
 	};
 
-	const adjustSegmentLength = (index: number, newLength: number) => {
-		const updatedPoints = [...drawPoints];
-
-		const from = updatedPoints[index];
-
-		let to: Vector2 | undefined;
-
-		if (index < updatedPoints.length - 1) {
-			to = updatedPoints[index + 1];
-		} else if (isDrawingClosed && closingPointIndex !== null) {
-			to = updatedPoints[closingPointIndex];
-		} else {
-			to = updatedPoints[0]; // fallback for special closing case
-		}
-
-		const dx = to.x - from.x;
-		const dy = to.y - from.y;
-		const originalLength = Math.sqrt(dx * dx + dy * dy);
-		if (originalLength === 0) return;
-
-		const direction = new Vector2(dx, dy).normalize();
-
-		// ✅ Clamp to building bounds
-		const maxLength = getMaxLengthInsideBuilding(
-			from,
-			direction,
-			currentBuildingData!.buildingWidth,
-			currentBuildingData!.buildingLength
-		);
-
-		const clampedLength = Math.min(newLength, maxLength);
-
-		const scale = clampedLength / originalLength;
-		const newTo = new Vector2(from.x + dx * scale, from.y + dy * scale);
-
-		if (index < updatedPoints.length - 1) {
-			updatedPoints[index + 1] = newTo;
-		} else {
-			updatedPoints[0] = newTo;
-		}
-
-		setDrawPoints(updatedPoints);
-	};
-
-	const getMaxLengthInsideBuilding = (
-		from: Vector2,
-		direction: Vector2,
-		buildingWidth: number,
-		buildingLength: number,
-		buffer = 0
-	): number => {
-		let maxLength = Infinity;
-
-		const halfWidth = buildingWidth / 2;
-		const halfLength = buildingLength / 2;
-
-		if (direction.x > 0) {
-			maxLength = Math.min(maxLength, (halfWidth - from.x - buffer) / direction.x);
-		} else if (direction.x < 0) {
-			maxLength = Math.min(maxLength, (-halfWidth - from.x + buffer) / direction.x);
-		}
-
-		if (direction.y > 0) {
-			maxLength = Math.min(maxLength, (halfLength - from.y - buffer) / direction.y);
-		} else if (direction.y < 0) {
-			maxLength = Math.min(maxLength, (-halfLength - from.y + buffer) / direction.y);
-		}
-
-		return Math.max(0, maxLength);
-	};
-
-	const getMaxSegmentLength = () => {
-		const segment = drawingSegments[selectedSegmentIndex!];
-		const from = segment.from;
-		const to = segment.to;
-		const direction = to.clone().sub(from).normalize();
-
-		return getMaxLengthInsideBuilding(
-			from,
-			direction,
-			currentBuildingData!.buildingWidth,
-			currentBuildingData!.buildingLength,
-			0.15
-		).toFixed(2);
-	};
-
 	const handleUpdateSegmentLength = () => {
 		if (segmentInputLength && drawPoints.length >= 2 && segmentInputLength >= 1 && currentBuildingData) {
-			const clampedLength = Math.min(segmentInputLength, +getMaxSegmentLength());
-			adjustSegmentLength(selectedSegmentIndex!, clampedLength);
+			const clampedLength = Math.min(
+				segmentInputLength,
+				+getMaxSegmentLength(
+					drawnSegments[selectedSegmentIndex!],
+					currentBuildingData.buildingWidth,
+					currentBuildingData.buildingLength
+				)
+			);
+			adjustSegmentLength(
+				selectedSegmentIndex!,
+				clampedLength,
+				drawPoints,
+				isDrawingClosed,
+				closingPointIndex,
+				currentBuildingData.buildingWidth,
+				currentBuildingData.buildingLength,
+				setDrawPoints
+			);
 			setSegmentInputLength(Math.round(clampedLength));
 		}
 	};
@@ -361,7 +327,7 @@ const App = () => {
 			}
 		});
 		segmentInputContainer.innerHTML = "";
-		drawingSegments.forEach((segment, index) => {
+		drawnSegments.forEach((segment, index) => {
 			const rowDiv = document.createElement("div");
 			rowDiv.className = "row";
 
@@ -388,37 +354,18 @@ const App = () => {
 			rowDiv.appendChild(innerDiv);
 			segmentInputContainer.appendChild(rowDiv);
 		});
-		const hiddenInputData: BuildingWithLocation = JSON.parse(hiddenBuildingsInput.value);
+		const hiddenInputData: BoqBuilding = JSON.parse(hiddenBuildingsInput.value);
 		hiddenInputData.hasClosedLoopSystem = isDrawingClosed;
-		hiddenInputData.segments = drawingSegments;
+		hiddenInputData.segments = drawnSegments;
 		hiddenInputData.closingPointIndex = closingPointIndex!;
-		hiddenInputData.obstacles = obstacles;
+		hiddenInputData.roofObjects = roofObjects;
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
 	};
-
-	const handleTransformUpdate = useCallback(
-		(updated: BuildingWithLocation) => {
-			if (
-				JSON.stringify(updated.groupPosition) !== JSON.stringify(currentBuildingData?.groupPosition) ||
-				JSON.stringify(updated.groupRotation) !== JSON.stringify(currentBuildingData?.groupRotation) ||
-				JSON.stringify(updated.buildingPosition) !== JSON.stringify(currentBuildingData?.buildingPosition) ||
-				JSON.stringify(updated.buildingRotation) !== JSON.stringify(currentBuildingData?.buildingRotation) ||
-				updated.buildingWidth !== currentBuildingData?.buildingWidth ||
-				updated.buildingHeight !== currentBuildingData?.buildingHeight ||
-				updated.buildingLength !== currentBuildingData?.buildingLength
-			) {
-				setCurrentBuildingData(updated);
-				updated.location = currentlySelectedLocation;
-				hiddenBuildingsInput.value = JSON.stringify(updated);
-			}
-		},
-		[currentBuildingData, currentlySelectedLocation]
-	);
 
 	useEffect(() => {
 		if (buildingsData && Object.keys(buildingsData).length > 0) {
 			// Do something if buildingsData is a non-empty object
-			const initialBuildingData = JSON.parse(JSON.stringify(buildingsData)) as BuildingWithLocation;
+			const initialBuildingData = JSON.parse(JSON.stringify(buildingsData)) as BoqBuilding;
 			setCurrentlySelectedLocation(initialBuildingData.location!);
 			setCurrentBuildingType(initialBuildingData.roofType as "flat" | "saddle" | "hipped");
 			setCurrentTransformTarget("group");
@@ -444,10 +391,10 @@ const App = () => {
 				setDrawPoints(restoredPoints);
 				setCurrentStep("defineLayout");
 			}
-			if ("obstacles" in initialBuildingData) {
-				if (initialBuildingData.obstacles!.length > 0) {
-					setObstacles(initialBuildingData.obstacles!);
-					setActiveObstacleId(initialBuildingData.obstacles![0].id);
+			if ("roofObjects" in initialBuildingData) {
+				if (initialBuildingData.roofObjects!.length > 0) {
+					setRoofObjects(initialBuildingData.roofObjects!);
+					setActiveRoofObjectId(initialBuildingData.roofObjects![0].id);
 				}
 			}
 			console.log("Initial building data loaded:", initialBuildingData);
@@ -469,27 +416,66 @@ const App = () => {
 	}, [handleAddBuilding, currentlySelectedLocation, buildingAdded]);
 
 	const renderObstacles = () => {
-		if (!currentBuildingData || obstacles.length === 0) return null;
+		if (!currentBuildingData || roofObjects.length === 0) return null;
 
-		return obstacles.map((obstacle) => (
-			<RooftopObstacle
-				key={obstacle.id}
-				obstacle={obstacle}
-				buildingWidth={currentBuildingData.buildingWidth}
-				buildingLength={currentBuildingData.buildingLength}
-				buildingHeight={currentBuildingData.buildingHeight}
-				isActive={obstacle.id === activeObstacleId}
-				enableTransformMode={currentStep === "defineRestrictions"}
-				transformMode={currentObstacleTransformMode}
-				onClick={() => setActiveObstacleId(obstacle.id)}
-				onUpdate={(updated) => setObstacles((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))}
+		return roofObjects.map((obstacle) => (
+			<RooftopObject key={obstacle.id} obstacle={obstacle} onClick={() => setActiveRoofObjectId(obstacle.id)} />
+		));
+	};
+
+	const renderDraggablePoints = () => {
+		return drawPoints.map((point, index) => (
+			<DraggablePoint
+				key={index}
+				index={index}
+				initial={point}
+				y={currentBuildingData!.buildingHeight + 0.03}
+				enabled={currentStep === "defineLayout" && drawingFinished}
+				isActive={index === activePointIndex}
+				onClick={() => setActivePointIndex(index)}
+				onUpdate={handleDragabblePointUpdated}
+				buildingData={currentBuildingData!}
+				currentStep={currentStep}
 			/>
 		));
 	};
 
-	return (
-		<div className="app-container">
-			{/* <input type="hidden" name="buildings" value={""} /> */}
+	const renderDrawnSegments = () => {
+		return drawnSegments.map((segment, index) => {
+			const [from, to] = getTransformedPoints([segment.from, segment.to], currentBuildingData!);
+
+			const isHovered = hoveredSegmentIndex === index;
+			const isSelected = selectedSegmentIndex === index;
+
+			return (
+				<Line
+					key={index}
+					points={[...from, ...to]}
+					color={isSelected ? "orange" : isHovered ? "orange" : "yellow"}
+					lineWidth={isHovered ? 15 : 5}
+					onPointerOver={(e) => {
+						if (currentStep !== "defineLayout") return;
+						e.stopPropagation();
+						setHoveredSegmentIndex(index);
+					}}
+					onPointerOut={(e) => {
+						if (currentStep !== "defineLayout") return;
+						e.stopPropagation();
+						setHoveredSegmentIndex(null);
+					}}
+					onClick={(e) => {
+						if (currentStep !== "defineLayout") return;
+						e.stopPropagation();
+						setSelectedSegmentIndex(index);
+						setSegmentInputLength(segment.length);
+					}}
+				/>
+			);
+		});
+	};
+
+	const renderCanvasContent = () => {
+		return (
 			<div className="canvas-wrapper">
 				<SearchBar onLocationSelect={handleLocationSelect} />
 				<div className="canvas-container">
@@ -517,55 +503,17 @@ const App = () => {
 								{renderObstacles()}
 							</BoqBuildingRenderer>
 						)}
-						{drawPoints.map((point, index) => (
-							<DraggablePoint
-								key={index}
-								index={index}
-								initial={point}
-								y={currentBuildingData!.buildingHeight + 0.03}
-								enabled={currentStep === "defineLayout" && drawingFinished}
-								isActive={index === activePointIndex}
-								onClick={() => setActivePointIndex(index)}
-								onUpdate={handleDragabblePointUpdated}
-								buildingData={currentBuildingData!}
-								currentStep={currentStep}
-							/>
-						))}
-						{drawingSegments.map((segment, index) => {
-							const [from, to] = getTransformedPoints([segment.from, segment.to], currentBuildingData!);
-
-							const isHovered = hoveredSegmentIndex === index;
-							const isSelected = selectedSegmentIndex === index;
-
-							return (
-								<Line
-									key={index}
-									points={[...from, ...to]}
-									color={isSelected ? "orange" : isHovered ? "orange" : "yellow"}
-									lineWidth={isHovered ? 15 : 5}
-									onPointerOver={(e) => {
-										if (currentStep !== "defineLayout") return;
-										e.stopPropagation();
-										setHoveredSegmentIndex(index);
-									}}
-									onPointerOut={(e) => {
-										if (currentStep !== "defineLayout") return;
-										e.stopPropagation();
-										setHoveredSegmentIndex(null);
-									}}
-									onClick={(e) => {
-										if (currentStep !== "defineLayout") return;
-										e.stopPropagation();
-										setSelectedSegmentIndex(index);
-										setSegmentInputLength(segment.length);
-									}}
-								/>
-							);
-						})}
+						{renderDraggablePoints()}
+						{renderDrawnSegments()}
 						<OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2} />
 					</Canvas>
 				</div>
 			</div>
+		);
+	};
+
+	const renderDashboardContent = () => {
+		return (
 			<div className="action-container">
 				<h3>Select current step</h3>
 				<div className="btn-container control-panel">
@@ -629,7 +577,7 @@ const App = () => {
 									className="btn"
 									onClick={() => handleAddBuilding(currentBuildingType!, currentlySelectedLocation!)}
 								>
-									+ Add new building
+									Add new building
 								</button>
 							</div>
 						)}
@@ -734,43 +682,35 @@ const App = () => {
 				)}
 				{currentStep === "defineRestrictions" && buildingAdded && (
 					<>
-						<h3>Define restrictions</h3>
+						<h3>Roof objects</h3>
 						<div className="btn-container">
-							<button className="btn" onClick={handlePlaceObstacle}>
-								+ Add Roof Object
+							<button className="btn" onClick={handlePlaceRoofObject}>
+								Add Roof Object
 							</button>
-							{activeObstacleId && (
-								<button className="btn" onClick={handleDeleteObstacle}>
-									Delete obstacle
+							{activeRoofObjectId && (
+								<button className="btn" onClick={handleDeleteRoofObject}>
+									Delete object
 								</button>
 							)}
 						</div>
-						{obstacles.length > 0 && activeObstacleId && (
-							<div className="options-container">
-								<div>
-									<label htmlFor="translate">Move</label>
-									<input
-										type="radio"
-										name="translate-mode"
-										id="translate"
-										value={"translate"}
-										checked={currentObstacleTransformMode === "translate"}
-										onChange={() => setCurrentObstacleTransformMode("translate")}
+						{activeRoofObjectId &&
+							(() => {
+								const obj = roofObjects.find((o) => o.id === activeRoofObjectId);
+
+								if (!obj) return null;
+
+								return (
+									<RoofObjectEditor
+										roofObject={obj}
+										buildingWidth={currentBuildingData!.buildingWidth}
+										buildingLength={currentBuildingData!.buildingLength}
+										buildingHeight={currentBuildingData!.buildingHeight}
+										onUpdate={(updated) =>
+											setRoofObjects((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+										}
 									/>
-								</div>
-								<div>
-									<label htmlFor="scale">Scale</label>
-									<input
-										type="radio"
-										name="translate-mode"
-										id="scale"
-										value={"scale"}
-										checked={currentObstacleTransformMode === "scale"}
-										onChange={() => setCurrentObstacleTransformMode("scale")}
-									/>
-								</div>
-							</div>
-						)}
+								);
+							})()}
 					</>
 				)}
 				{currentStep === "defineLayout" && buildingAdded && (
@@ -793,7 +733,11 @@ const App = () => {
 									id="segment-length"
 									type="number"
 									min={1}
-									max={getMaxSegmentLength()}
+									max={getMaxSegmentLength(
+										drawnSegments[selectedSegmentIndex!],
+										currentBuildingData.buildingWidth,
+										currentBuildingData.buildingLength
+									)}
 									value={segmentInputLength ?? ""}
 									onChange={(e) => setSegmentInputLength(parseFloat(e.target.value))}
 								/>
@@ -805,6 +749,14 @@ const App = () => {
 					</>
 				)}
 			</div>
+		);
+	};
+
+	return (
+		<div className="app-container">
+			{/* <input type="hidden" name="buildings" value={""} /> */}
+			{renderCanvasContent()}
+			{renderDashboardContent()}
 		</div>
 	);
 };

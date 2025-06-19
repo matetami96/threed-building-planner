@@ -4,14 +4,14 @@ import { TransformControls } from "@react-three/drei";
 import { useEffect, useRef, useState } from "react";
 
 import BoqBuildingFlat from "../models/BoqBuildingFlat";
-import { BoqBuilding, BuildingWithLocation } from "../types";
+import { BoqBuilding } from "../types";
 
 type BoqBuildingRendererProps = {
 	transformTarget: "group" | "roof" | "building";
 	transformMode: "translate" | "scale" | "rotate";
 	buildingProps: BoqBuilding;
 	disableTransform: boolean;
-	onTransformUpdate?: (updated: BuildingWithLocation) => void;
+	onTransformUpdate?: (updated: BoqBuilding) => void;
 	onBuildingClick?: (e: ThreeEvent<PointerEvent>) => void;
 	children?: React.ReactNode;
 };
