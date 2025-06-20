@@ -418,8 +418,13 @@ const App = () => {
 	const renderObstacles = () => {
 		if (!currentBuildingData || roofObjects.length === 0) return null;
 
-		return roofObjects.map((obstacle) => (
-			<RooftopObject key={obstacle.id} obstacle={obstacle} onClick={() => setActiveRoofObjectId(obstacle.id)} />
+		return roofObjects.map((roofObject) => (
+			<RooftopObject
+				key={roofObject.id}
+				activeRoofObjectId={activeRoofObjectId}
+				roofObject={roofObject}
+				onClick={() => setActiveRoofObjectId(roofObject.id)}
+			/>
 		));
 	};
 
@@ -493,6 +498,7 @@ const App = () => {
 						)}
 						{currentBuildingData && (
 							<BoqBuildingRenderer
+								currentStep={currentStep}
 								transformTarget={currentTransformTarget}
 								transformMode={currentTransformMode}
 								buildingProps={currentBuildingData}
