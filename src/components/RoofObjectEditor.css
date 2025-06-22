@@ -1,0 +1,28 @@
+.roofEditorLabel {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.roofEditorLabel div {
+	width: 65px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 5px;
+}
+
+.roofEditorLabel div img {
+	width: 50px;
+}
+
+.roofEditorLabel input {
+	height: fit-content;
+}
+
+@media (max-width: 1280px) {
+	.roofEditorLabel {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}

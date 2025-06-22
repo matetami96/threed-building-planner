@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="74px" height="59px" viewBox="0 0 74 59" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 56.2 (81672) - https://sketch.com -->
+    <title>Icon/Dimensions/Distance2Edges</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Icon/Dimensions/Distance2Edges" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-10">
+            <g id="Group" transform="translate(29.000000, 0.000000)">
+                <g id="Group-7">
+                    <path d="M8.00000031,1.61538462 L8.00000031,19.6126986" id="Line-2" stroke="#004A7F" stroke-linecap="square" stroke-dasharray="1,2"></path>
+                    <path d="M0.8,1.61538462 L15.2,1.61538462" id="Line-4" stroke="#979797" stroke-linecap="round"></path>
+                </g>
+            </g>
+            <g id="Group-Copy" transform="translate(60.000000, 29.500000) rotate(-270.000000) translate(-60.000000, -29.500000) translate(52.000000, 16.000000)">
+                <g id="Group-7">
+                    <path d="M8.00000031,1.58823529 L8.00000031,26.0281786" id="Line-2" stroke="#004A7F" stroke-linecap="square" stroke-dasharray="1,2"></path>
+                    <path d="M0.8,1.58823529 L15.2,1.58823529" id="Line-4" stroke="#979797" stroke-linecap="round"></path>
+                </g>
+            </g>
+            <g id="Group-Copy-2" transform="translate(37.000000, 48.000000) rotate(-180.000000) translate(-37.000000, -48.000000) translate(29.000000, 37.000000)">
+                <g id="Group-7">
+                    <path d="M8.00000031,1.57142857 L8.00000031,21.0654764" id="Line-2" stroke="#004A7F" stroke-linecap="square" stroke-dasharray="1,2"></path>
+                    <path d="M0.8,1.57142857 L15.2,1.57142857" id="Line-4" stroke="#979797" stroke-linecap="round"></path>
+                </g>
+            </g>
+            <g id="Group-Copy-3" transform="translate(13.000000, 30.000000) rotate(-90.000000) translate(-13.000000, -30.000000) translate(5.000000, 17.000000)">
+                <g id="Group-7">
+                    <path d="M8.00000031,1.625 L8.00000031,25.9696689" id="Line-2" stroke="#004A7F" stroke-dasharray="2,1"></path>
+                    <path d="M0.8,1.625 L15.2,1.625" id="Line-4" stroke="#979797" stroke-linecap="round"></path>
+                </g>
+            </g>
+            <rect id="Rectangle" stroke="#979797" x="26.5" y="20.5" width="21" height="18"></rect>
+        </g>
+    </g>
+</svg>

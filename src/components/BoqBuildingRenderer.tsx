@@ -7,13 +7,14 @@ import BoqBuildingFlat from "../models/BoqBuildingFlat";
 import { BoqBuilding } from "../types";
 
 type BoqBuildingRendererProps = {
-	currentStep: string;
+	currentStep: "defineBuilding" | "defineRestrictions" | "defineLayout";
 	transformTarget: "group" | "roof" | "building";
 	transformMode: "translate" | "scale" | "rotate";
 	buildingProps: BoqBuilding;
 	disableTransform: boolean;
 	onTransformUpdate?: (updated: BoqBuilding) => void;
 	onBuildingClick?: (e: ThreeEvent<PointerEvent>) => void;
+	onDoubleClickBuilding?: () => void;
 	children?: React.ReactNode;
 };
 
@@ -25,9 +26,11 @@ const BoqBuildingRenderer = ({
 	disableTransform,
 	onTransformUpdate,
 	onBuildingClick,
+	onDoubleClickBuilding,
 	children,
 }: BoqBuildingRendererProps) => {
 	const [isDragging, setIsDragging] = useState(false);
+	const [buildingHovered, setBuildingHovered] = useState(false);
 	const groupRef = useRef<THREE.Group>(null);
 	const buildingRef = useRef<THREE.Mesh>(null);
 	const transformControlsRef = useRef<React.ElementRef<typeof TransformControls>>(null);
@@ -89,9 +92,23 @@ const BoqBuildingRenderer = ({
 					position={flat.buildingPosition}
 					rotation={flat.buildingRotation}
 					onPointerDown={onBuildingClick}
+					onDoubleClick={(e) => {
+						e.stopPropagation();
+						onDoubleClickBuilding?.();
+						setBuildingHovered(false);
+					}}
+					onPointerOver={(e) => {
+						if (currentStep === "defineBuilding") return;
+						e.stopPropagation();
+						setBuildingHovered(true);
+					}}
+					onPointerOut={(e) => {
+						e.stopPropagation();
+						setBuildingHovered(false);
+					}}
 				>
 					<boxGeometry args={[flat.buildingWidth, flat.buildingHeight, flat.buildingLength]} />
-					<meshStandardMaterial color="lightgray" />
+					<meshStandardMaterial color={buildingHovered ? "lightblue" : "lightgray"} />
 				</mesh>
 				{children}
 			</group>

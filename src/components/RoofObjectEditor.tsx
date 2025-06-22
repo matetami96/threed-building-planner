@@ -1,3 +1,9 @@
+import "./RoofObjectEditor.css";
+import widthIcon from "../assets/width.svg";
+import lengthIcon from "../assets/length.svg";
+import heightIcon from "../assets/height.svg";
+import positionIcon from "../assets/position.svg";
+
 import { RooftopObjectType } from "../types";
 
 type RoofObjectEditorProps = {
@@ -62,45 +68,65 @@ const RoofObjectEditor = ({
 	return (
 		<div className="building-inputs">
 			<h3>Edit Object</h3>
-			<label>
-				<p>Width (X):</p>
+			<label className="roofEditorLabel">
+				<div>
+					<p>Width</p>
+					<img src={widthIcon} alt="Width" />
+				</div>
 				<input
+					id="roof-object-width"
 					type="number"
 					value={scaleX.toFixed(2)}
 					onChange={(e) => updateObstacle("scale", 0, parseFloat(e.target.value))}
 				/>
 			</label>
 			<br />
-			<label>
-				<p>Height (Y):</p>
+			<label className="roofEditorLabel">
+				<div>
+					<p>Height</p>
+					<img src={heightIcon} alt="Height" />
+				</div>
 				<input
+					id="roof-object-height"
 					type="number"
 					value={scaleY.toFixed(2)}
 					onChange={(e) => updateObstacle("scale", 1, parseFloat(e.target.value))}
 				/>
 			</label>
 			<br />
-			<label>
-				<p>Length (Z):</p>
+			<label className="roofEditorLabel">
+				<div>
+					<p>Length</p>
+					<img src={lengthIcon} alt="Length" />
+				</div>
 				<input
+					id="roof-object-length"
 					type="number"
 					value={scaleZ.toFixed(2)}
 					onChange={(e) => updateObstacle("scale", 2, parseFloat(e.target.value))}
 				/>
 			</label>
 			<br />
-			<label>
-				<p>Position X:</p>
+			<label className="roofEditorLabel">
+				<div>
+					<p>Position X</p>
+					<img src={positionIcon} alt="Position X" />
+				</div>
 				<input
+					id="roof-object-position-x"
 					type="number"
 					value={posX.toFixed(2)}
 					onChange={(e) => updateObstacle("position", 0, parseFloat(e.target.value))}
 				/>
 			</label>
 			<br />
-			<label>
-				<p>Position Z:</p>
+			<label className="roofEditorLabel">
+				<div>
+					<p>Position Z</p>
+					<img src={positionIcon} alt="Position Y" />
+				</div>
 				<input
+					id="roof-object-position-z"
 					type="number"
 					value={posZ.toFixed(2)}
 					onChange={(e) => updateObstacle("position", 2, parseFloat(e.target.value))}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64px" height="64px" viewBox="0 0 64 64" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Icon/Generic/Width</title>
+    <g id="Icon/Generic/Width" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Rectangle" x="0" y="0" width="64" height="64"></rect>
+        <g id="Group" transform="translate(13.000000, 11.000000)" fill-rule="nonzero">
+            <path d="M37.8247113,7.63047738e-14 L37.8247113,25.1640635 L33,29.926 L33,30.0131948 L2.59348099e-13,30.0131948 L2.59348099e-13,5.01319475 L0.011,5.013 L9.69890834e-13,5.00178149 L5.31530659,7.0332893e-14 L37.8247113,7.63047738e-14 Z M31,7.0129366 L2,7.0129366 L2,28.0129366 L31,28.0129366 L31,7.0129366 Z M35.825,3.652 L33,6.477 L33,27.115 L35.825546,24.3266918 L35.825,3.652 Z M31.636,5.013 L34.65,1.999 L6.10854598,1.99969184 L2.905,5.013 L31.636,5.013 Z" id="Combined-Shape" fill="#979797"></path>
+            <path d="M10.0714286,41.5846233 L0.928571429,37.5846233 L10.0714286,33.5846233 L10.0705714,36.5126233 L23.9275714,36.5126233 L23.9285714,33.5846233 L33.0714286,37.5846233 L23.9285714,41.5846233 L23.9275714,38.5126233 L10.0705714,38.5126233 L10.0714286,41.5846233 Z" id="Combined-Shape" fill="#225D98"></path>
+        </g>
+    </g>
+</svg>

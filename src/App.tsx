@@ -424,6 +424,7 @@ const App = () => {
 				activeRoofObjectId={activeRoofObjectId}
 				roofObject={roofObject}
 				onClick={() => setActiveRoofObjectId(roofObject.id)}
+				onDoubleClick={() => setCurrentStep("defineRestrictions")}
 			/>
 		));
 	};
@@ -438,41 +439,49 @@ const App = () => {
 				enabled={currentStep === "defineLayout" && drawingFinished}
 				isActive={index === activePointIndex}
 				onClick={() => setActivePointIndex(index)}
+				onDoubleClick={() => setCurrentStep("defineLayout")}
 				onUpdate={handleDragabblePointUpdated}
 				buildingData={currentBuildingData!}
-				currentStep={currentStep}
 			/>
 		));
 	};
 
 	const renderDrawnSegments = () => {
+		const decideColor = (selected: boolean, hovered: boolean) => {
+			if (hovered) return "orange";
+			if (currentStep === "defineLayout" && selected) return "orange";
+			return "yellow";
+		};
+
 		return drawnSegments.map((segment, index) => {
 			const [from, to] = getTransformedPoints([segment.from, segment.to], currentBuildingData!);
 
 			const isHovered = hoveredSegmentIndex === index;
 			const isSelected = selectedSegmentIndex === index;
+			const decidedColor = decideColor(isSelected, isHovered);
 
 			return (
 				<Line
 					key={index}
 					points={[...from, ...to]}
-					color={isSelected ? "orange" : isHovered ? "orange" : "yellow"}
+					color={decidedColor}
 					lineWidth={isHovered ? 15 : 5}
 					onPointerOver={(e) => {
-						if (currentStep !== "defineLayout") return;
 						e.stopPropagation();
 						setHoveredSegmentIndex(index);
 					}}
 					onPointerOut={(e) => {
-						if (currentStep !== "defineLayout") return;
 						e.stopPropagation();
 						setHoveredSegmentIndex(null);
 					}}
 					onClick={(e) => {
-						if (currentStep !== "defineLayout") return;
 						e.stopPropagation();
 						setSelectedSegmentIndex(index);
 						setSegmentInputLength(segment.length);
+					}}
+					onDoubleClick={(e) => {
+						e.stopPropagation();
+						setCurrentStep("defineLayout");
 					}}
 				/>
 			);
@@ -505,6 +514,11 @@ const App = () => {
 								disableTransform={currentStep !== "defineBuilding"}
 								onTransformUpdate={handleTransformUpdate}
 								onBuildingClick={handleBuildingClick}
+								onDoubleClickBuilding={() => {
+									if (currentStep !== "defineBuilding") {
+										setCurrentStep("defineBuilding");
+									}
+								}}
 							>
 								{renderObstacles()}
 							</BoqBuildingRenderer>
