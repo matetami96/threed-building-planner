@@ -242,8 +242,10 @@ const App = () => {
 		setDrawPoints([]);
 		setIsDrawingClosed(false);
 		setClosingPointIndex(null);
+		setActivePointIndex(null);
 		setSelectedSegmentIndex(null);
 		setSegmentInputLength(null);
+		setHoveredSegmentIndex(null);
 		loopInputs.forEach((input) => (input.checked = false));
 		segmentInputContainer.innerHTML = "";
 		const hiddenInputData: BoqBuilding = JSON.parse(hiddenBuildingsInput.value);
@@ -318,7 +320,9 @@ const App = () => {
 		}
 	};
 
-	const handleLoadFromDrawing = () => {
+	const handleLoadFromDrawing = useCallback(() => {
+		if (drawPoints.length < 2 || !currentBuildingData) return;
+
 		loopInputs.forEach((input) => {
 			if (input.value === "c" && isDrawingClosed) {
 				input.checked = true;
@@ -360,7 +364,13 @@ const App = () => {
 		hiddenInputData.closingPointIndex = closingPointIndex!;
 		hiddenInputData.roofObjects = roofObjects;
 		hiddenBuildingsInput.value = JSON.stringify(hiddenInputData);
-	};
+	}, [closingPointIndex, currentBuildingData, drawPoints, drawnSegments, isDrawingClosed, roofObjects]);
+
+	useEffect(() => {
+		if (drawPoints.length >= 2 && drawingFinished) {
+			handleLoadFromDrawing();
+		}
+	}, [drawPoints, segmentInputLength, drawingFinished, handleLoadFromDrawing]);
 
 	useEffect(() => {
 		if (buildingsData && Object.keys(buildingsData).length > 0) {

@@ -46,6 +46,10 @@ export default function DraggablePoint({
 		setPosition(localPos);
 	}, [initial, y, buildingData]);
 
+	const handleMouseDown = () => {
+		document.body.style.cursor = "grabbing";
+	};
+
 	const handleMouseUp = () => {
 		if (!meshRef.current) return;
 		const worldPos = meshRef.current.position.clone();
@@ -69,6 +73,7 @@ export default function DraggablePoint({
 		// Step 4: Save only XZ in local space
 		const local2D = new THREE.Vector2(localPos.x, localPos.z);
 		onUpdate(index, local2D);
+		document.body.style.cursor = "default";
 	};
 
 	const radius = hovered ? 0.3 : 0.15;
@@ -83,6 +88,10 @@ export default function DraggablePoint({
 				onPointerOver={(e) => {
 					e.stopPropagation();
 					setHovered(true);
+
+					if (enabled) {
+						onClick();
+					}
 				}}
 				onPointerOut={(e) => {
 					e.stopPropagation();
@@ -108,6 +117,7 @@ export default function DraggablePoint({
 					showY={false}
 					showX={true}
 					showZ={true}
+					onMouseDown={handleMouseDown}
 					onMouseUp={handleMouseUp}
 				/>
 			)}

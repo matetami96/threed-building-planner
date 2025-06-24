@@ -82,6 +82,68 @@ const BoqBuildingRenderer = ({
 		}
 	}, [buildingProps, isDragging, onTransformUpdate]);
 
+	const getAxisVisibility = () => {
+		return {
+			showX: transformMode === "scale" || transformMode === "translate",
+			showY: (transformTarget === "building" && transformMode === "scale") || transformMode === "rotate",
+			showZ: transformMode === "scale" || transformMode === "translate",
+		};
+	};
+
+	const handleMouseDown = () => {
+		setIsDragging(true);
+		document.body.style.cursor = "grabbing";
+	};
+
+	const handleMouseUp = () => {
+		setIsDragging(false);
+		document.body.style.cursor = "default";
+	};
+
+	const handleOnObjectChange = () => {
+		if (!groupRef.current || !buildingRef.current) return;
+		if (transformMode === "scale") return;
+
+		const flat = buildingProps as BoqBuildingFlat;
+		const updated: BoqBuildingFlat = {
+			...flat,
+			groupPosition: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
+			groupRotation: [groupRef.current.rotation.x, groupRef.current.rotation.y, groupRef.current.rotation.z],
+			buildingPosition: [
+				buildingRef.current.position.x,
+				buildingRef.current.position.y,
+				buildingRef.current.position.z,
+			],
+			buildingRotation: [
+				buildingRef.current.rotation.x,
+				buildingRef.current.rotation.y,
+				buildingRef.current.rotation.z,
+			],
+			// keep original dimensions during live scale
+			buildingWidth: flat.buildingWidth,
+			buildingHeight: flat.buildingHeight,
+			buildingLength: flat.buildingLength,
+		};
+
+		onTransformUpdate?.(updated);
+	};
+
+	const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+		e.stopPropagation();
+		if (currentStep === "defineBuilding") return;
+		setBuildingHovered(true);
+	};
+
+	const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
+		e.stopPropagation();
+		setBuildingHovered(false);
+	};
+
+	const handleDoubleClick = () => {
+		onDoubleClickBuilding?.();
+		setBuildingHovered(false);
+	};
+
 	const renderFlat = () => {
 		const flat = buildingProps as BoqBuildingFlat;
 
@@ -91,21 +153,10 @@ const BoqBuildingRenderer = ({
 					ref={buildingRef}
 					position={flat.buildingPosition}
 					rotation={flat.buildingRotation}
+					onPointerOver={handlePointerOver}
+					onPointerOut={handlePointerOut}
 					onPointerDown={onBuildingClick}
-					onDoubleClick={(e) => {
-						e.stopPropagation();
-						onDoubleClickBuilding?.();
-						setBuildingHovered(false);
-					}}
-					onPointerOver={(e) => {
-						if (currentStep === "defineBuilding") return;
-						e.stopPropagation();
-						setBuildingHovered(true);
-					}}
-					onPointerOut={(e) => {
-						e.stopPropagation();
-						setBuildingHovered(false);
-					}}
+					onDoubleClick={handleDoubleClick}
 				>
 					<boxGeometry args={[flat.buildingWidth, flat.buildingHeight, flat.buildingLength]} />
 					<meshStandardMaterial color={buildingHovered ? "lightblue" : "lightgray"} />
@@ -113,14 +164,6 @@ const BoqBuildingRenderer = ({
 				{children}
 			</group>
 		);
-	};
-
-	const getAxisVisibility = () => {
-		return {
-			showX: transformMode === "scale" || transformMode === "translate",
-			showY: (transformTarget === "building" && transformMode === "scale") || transformMode === "rotate",
-			showZ: transformMode === "scale" || transformMode === "translate",
-		};
 	};
 
 	return (
@@ -135,35 +178,9 @@ const BoqBuildingRenderer = ({
 					showZ={getAxisVisibility().showZ}
 					enabled={!disableTransform}
 					visible={!disableTransform}
-					onMouseDown={() => setIsDragging(true)}
-					onMouseUp={() => setIsDragging(false)}
-					onObjectChange={() => {
-						if (!groupRef.current || !buildingRef.current) return;
-						if (transformMode === "scale") return;
-
-						const flat = buildingProps as BoqBuildingFlat;
-						const updated: BoqBuildingFlat = {
-							...flat,
-							groupPosition: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
-							groupRotation: [groupRef.current.rotation.x, groupRef.current.rotation.y, groupRef.current.rotation.z],
-							buildingPosition: [
-								buildingRef.current.position.x,
-								buildingRef.current.position.y,
-								buildingRef.current.position.z,
-							],
-							buildingRotation: [
-								buildingRef.current.rotation.x,
-								buildingRef.current.rotation.y,
-								buildingRef.current.rotation.z,
-							],
-							// keep original dimensions during live scale
-							buildingWidth: flat.buildingWidth,
-							buildingHeight: flat.buildingHeight,
-							buildingLength: flat.buildingLength,
-						};
-
-						onTransformUpdate?.(updated);
-					}}
+					onMouseDown={handleMouseDown}
+					onMouseUp={handleMouseUp}
+					onObjectChange={handleOnObjectChange}
 				/>
 			)}
 		</>
